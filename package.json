@@ -1,0 +1,27 @@
+{
+  "name": "alwenobot",
+  "version": "1.0.0",
+  "description": "Bot per Discord in Node.js di zAlweNy26 !",
+  "main": "bot.js",
+  "author": "zAlweNy26",
+  "license": "ISC",
+  "scripts": {},
+  "devDependencies": {},
+  "dependencies": {
+    "cod-api": "^3.3.1",
+    "color-convert": "^1.9.3",
+    "cpu-stat": "^2.0.1",
+    "discord-akairo": "^7.5.5",
+    "discord.js": "^11.4.2",
+    "jimp": "^0.4.0",
+    "machinepack-steam": "^0.1.10",
+    "moment": "^2.22.2",
+    "node-fetch": "^2.2.0",
+    "overwatch-api": "^0.7.0",
+    "request": "^2.88.0",
+    "request-promise": "^4.2.2",
+    "steamid": "^1.1.0",
+    "underscore": "^1.9.1",
+    "weather-js": "^2.0.0"
+  }
+}
