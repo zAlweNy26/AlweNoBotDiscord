@@ -11,8 +11,8 @@ const bot = new AkairoClient({
     commandUtilLifetime: 86400000,
     defaultCooldown: 2,
     commandDirectory: './commands/',
-    inhibitorDirectory: './inhibitors/',
-    listenerDirectory: './listeners/'
+    //inhibitorDirectory: './inhibitors/',
+    //listenerDirectory: './listeners/'
 }, {
     disableEveryone: true
 });
