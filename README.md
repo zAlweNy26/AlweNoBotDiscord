@@ -1,2 +1,2 @@
-# Bots
- Bots of all kinds !
+# AlweNoBot
+Discord Bot by zAlweNy26 !
