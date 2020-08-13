@@ -20,14 +20,14 @@ client.settings = new Enmap({
 
 const defaultSettings = {
     prefix: ".",
-    welcome: false,
-    welcomeID: "0",
-    welcomeMessage: "Benvenuto nel server **{{utente}}** !",
-    farewell: false,
-    farewellID: "0",
-    farewellMessage: "Addio **{{utente}}** !",
-    membersInChannel: false,
-    membersInChannelID: "0",
+    welcome: true,
+    welcomeID: "742811567988539554",
+    welcomeMessage: "Benvenuto **{{utente}}** su **RDA - Skin & Scripts** ! :tada: Ottieni il ruolo <@742833112245076029> nel canale <#743412863032623204> !",
+    farewell: true,
+    farewellID: "742833934790033489",
+    farewellMessage: "Ci dispiace che te ne sia andato {{utente}}. Fai buon viaggio ! :rolling_eyes:",
+    membersInChannel: true,
+    membersInChannelID: "742874009942753382",
     membersInChannelName: "👥 Membri : {{membri}}",
 }
 
