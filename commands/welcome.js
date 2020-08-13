@@ -12,33 +12,32 @@ module.exports = {
 	examples: ['welcome 742811567988539554 Benvenuto {{utente}} !', 'wm 742811567988539554 Ehy {{utente}} !'],
 	args: true,
 	execute(message, args) {
+		const wmEmbed = new Discord.MessageEmbed()
+
 		if (args[0] == 'delete') {
 			message.client.settings.set(message.guild.id, false, "welcome")
-			const fwEmbed = new Discord.MessageEmbed()
-				.setColor(0xC80000)
-				.setDescription(`*Hai eliminato il messaggio di addio !*`)
-			return message.channel.send(fwEmbed)
+			wmEmbed.setColor(0xC80000).setDescription(`*Hai eliminato il messaggio di addio !*`)
+			return message.channel.send(wmEmbed)
 		}
 		
 		if (isNaN(args[0])) {
-			const fwEmbed = new Discord.MessageEmbed()
-				.setColor(0xC80000)
-				.setDescription(`*Non hai inserito un ID canale valido !*`)
-			return message.channel.send(fwEmbed)
+			wmEmbed.setColor(0xC80000).setDescription(`*Non hai inserito un ID canale valido !*`)
+			return message.channel.send(wmEmbed)
 		}
 
 		let channelID = args[0]
 		args[0] = ''
 
 		if (!message.guild.channels.cache.some((channel) => channel.id === channelID)) {
-			const fwEmbed = new Discord.MessageEmbed()
-				.setColor(0xC80000)
-				.setDescription(`*Non hai inserito un ID canale esistente !*`)
-			return message.channel.send(fwEmbed)
+			wmEmbed.setColor(0xC80000).setDescription(`*Non hai inserito un ID canale esistente !*`)
+			return message.channel.send(wmEmbed)
 		}
 
 		message.client.settings.set(message.guild.id, true, "welcome")
 		message.client.settings.set(message.guild.id, channelID, "welcomeID")
 		message.client.settings.set(message.guild.id, args.join(" "), "welcomeMessage")
+
+		wmEmbed.setColor('#00AE86').setDescription(`*Messaggio di benvenuto creato !*`)
+		message.channel.send(wmEmbed)
 	},
 }

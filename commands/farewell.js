@@ -12,18 +12,16 @@ module.exports = {
 	examples: ['farewell 742811567988539554 Addio {{utente}} !', 'fw 742811567988539554 Arrivederci {{utente}} !'],
 	args: true,
 	execute(message, args) {
+		const fwEmbed = new Discord.MessageEmbed()
+
 		if (args[0] == 'delete') {
 			message.client.settings.set(message.guild.id, false, "farewell")
-			const fwEmbed = new Discord.MessageEmbed()
-				.setColor(0xC80000)
-				.setDescription(`*Hai eliminato il messaggio di addio !*`)
+			fwEmbed.setColor(0xC80000).setDescription(`*Hai eliminato il messaggio di addio !*`)
 			return message.channel.send(fwEmbed)
 		}
 
 		if (isNaN(args[0])) {
-			const fwEmbed = new Discord.MessageEmbed()
-				.setColor(0xC80000)
-				.setDescription(`*Non hai inserito un ID canale valido !*`)
+			fwEmbed.setColor(0xC80000).setDescription(`*Non hai inserito un ID canale valido !*`)
 			return message.channel.send(fwEmbed)
 		}
 
@@ -40,5 +38,8 @@ module.exports = {
 		message.client.settings.set(message.guild.id, true, "farewell")
 		message.client.settings.set(message.guild.id, channelID, "farewellID")
 		message.client.settings.set(message.guild.id, args.join(" "), "farewellMessage")
+
+		fwEmbed.setColor('#00AE86').setDescription(`*Messaggio di addio creato !*`)
+		message.channel.send(fwEmbed)
 	},
 }

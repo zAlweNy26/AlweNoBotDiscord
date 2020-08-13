@@ -12,33 +12,32 @@ module.exports = {
 	examples: ['mbc 742811567988539554 👥Membri : {{membri}}'],
 	args: true,
 	execute(message, args) {
+		const mbcEmbed = new Discord.MessageEmbed()
+
 		if (args[0] == 'delete') {
 			message.client.settings.set(message.guild.id, false, "farewell")
-			const fwEmbed = new Discord.MessageEmbed()
-				.setColor(0xC80000)
-				.setDescription(`*Hai eliminato il messaggio di addio !*`)
-			return message.channel.send(fwEmbed)
+			mbcEmbed.setColor(0xC80000).setDescription(`*Hai eliminato il messaggio di addio !*`)
+			return message.channel.send(mbcEmbed)
 		}
 
 		if (isNaN(args[0])) {
-			const fwEmbed = new Discord.MessageEmbed()
-				.setColor(0xC80000)
-				.setDescription(`*Non hai inserito un ID canale valido !*`)
-			return message.channel.send(fwEmbed)
+			mbcEmbed.setColor(0xC80000).setDescription(`*Non hai inserito un ID canale valido !*`)
+			return message.channel.send(mbcEmbed)
 		}
 
 		let channelID = args[0]
 		args[0] = ''
 
 		if (!message.guild.channels.cache.some((channel) => channel.id === channelID)) {
-			const fwEmbed = new Discord.MessageEmbed()
-				.setColor(0xC80000)
-				.setDescription(`*Non hai inserito un ID canale esistente !*`)
-			return message.channel.send(fwEmbed)
+			mbcEmbed.setColor(0xC80000).setDescription(`*Non hai inserito un ID canale esistente !*`)
+			return message.channel.send(mbcEmbed)
 		}
 
 		message.client.settings.set(message.guild.id, true, "membersInChannel")
 		message.client.settings.set(message.guild.id, channelID, "membersInChannelID")
 		message.client.settings.set(message.guild.id, args.join(" "), "membersInChannelMessage")
+
+		mbcEmbed.setColor('#00AE86').setDescription(`*Counter dei membri creato !*`)
+		message.channel.send(mbcEmbed)
 	},
 }
