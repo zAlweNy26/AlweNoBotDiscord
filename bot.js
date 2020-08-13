@@ -31,10 +31,7 @@ for (const file of commandFiles) {
 	client.commands.set(command.name, command)
 }
 
-let discordMembers = 0
-
 client.once('ready', () => {
-    discordMembers = client.users.cache.size
     /*client.channels.cache.get("735059907350364180").messages.fetch("735062153727311939")
     client.channels.cache.get("730469363446186025").setName(`👥 MEMBRI : ${discordMembers}`)
     setInterval(() => {
@@ -51,8 +48,6 @@ client.on("guildDelete", guild => {
 })
 
 client.on("guildMemberAdd", member => {
-    discordMembers = discordMembers + 1
-
     client.settings.ensure(member.guild.id, defaultSettings)
 
     if (client.settings.get(member.guild.id, "welcome") == true) {
@@ -66,7 +61,7 @@ client.on("guildMemberAdd", member => {
 
     if (client.settings.get(member.guild.id, "membersInChannel") == true) {
         let membersInChannel = client.settings.get(member.guild.id, "membersInChannelName")
-        membersInChannel = membersInChannel.replace("{{membri}}", discordMembers)
+        membersInChannel = membersInChannel.replace("{{membri}}", member.guild.members.cache.size)
         member.guild.channels.cache
             .find(channel => channel.id === client.settings.get(member.guild.id, "membersInChannelID"))
             .setName(membersInChannel)
@@ -75,7 +70,6 @@ client.on("guildMemberAdd", member => {
 })
 
 client.on('guildMemberRemove', member => {
-    discordMembers = discordMembers - 1
 
     if (client.settings.get(member.guild.id, "farewell") == true) {
         let farewellMessage = client.settings.get(member.guild.id, "farewellMessage")
@@ -83,6 +77,15 @@ client.on('guildMemberRemove', member => {
         member.guild.channels.cache
             .find(channel => channel.id === client.settings.get(member.guild.id, "farewellID"))
             .send(farewellMessage)
+            .catch(console.error)
+    }
+
+    if (client.settings.get(member.guild.id, "membersInChannel") == true) {
+        let membersInChannel = client.settings.get(member.guild.id, "membersInChannelName")
+        membersInChannel = membersInChannel.replace("{{membri}}", member.guild.members.cache.size)
+        member.guild.channels.cache
+            .find(channel => channel.id === client.settings.get(member.guild.id, "membersInChannelID"))
+            .setName(membersInChannel)
             .catch(console.error)
     }
 })

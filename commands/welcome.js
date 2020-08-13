@@ -30,10 +30,15 @@ module.exports = {
 		let channelID = args[0]
 		args[0] = ''
 
+		if (message.guild.channels.exists('id', channelID)) {
+			const fwEmbed = new Discord.MessageEmbed()
+				.setColor(0xC80000)
+				.setDescription(`*Non hai inserito un ID canale esistente !*`)
+			return message.channel.send(fwEmbed)
+		}
+
 		message.client.settings.set(message.guild.id, true, "welcome")
 		message.client.settings.set(message.guild.id, channelID, "welcomeID")
 		message.client.settings.set(message.guild.id, args.join(" "), "welcomeMessage")
-		
-		message.client.channels.cache.get(channelID).send(args.join(" "))
 	},
 }

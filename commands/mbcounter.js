@@ -1,15 +1,15 @@
 const Discord = require('discord.js')
 
 module.exports = {
-  	name: 'farewell',
-  	description: '*Mostra un messaggio di addio per ogni utente che esce*',
-  	aliases: ['fw'],
+  	name: 'mbcounter',
+  	description: '*Crea un counter dei membri del server in un canale vocale*',
+  	aliases: ['mbc'],
   	category: 'Misc',
   	usage: '[id canale] [messaggio]',
   	userPermissions: ['SEND_MESSAGES', 'EMBED_LINKS'],
 	guildOnly: true,
 	ownerOnly: false,
-	examples: ['farewell 742811567988539554 Addio {{utente}} !', 'fw 742811567988539554 Arrivederci {{utente}} !'],
+	examples: ['mbcounter 742811567988539554 👥Membri : {{membri}}'],
 	args: true,
 	execute(message, args) {
 		if (args[0] == 'delete') {
@@ -37,8 +37,8 @@ module.exports = {
 			return message.channel.send(fwEmbed)
 		}
 
-		message.client.settings.set(message.guild.id, true, "farewell")
-		message.client.settings.set(message.guild.id, channelID, "farewellID")
-		message.client.settings.set(message.guild.id, args.join(" "), "farewellMessage")
+		message.client.settings.set(message.guild.id, true, "membersInChannel")
+		message.client.settings.set(message.guild.id, channelID, "membersInChannelID")
+		message.client.settings.set(message.guild.id, args.join(" "), "membersInChannelMessage")
 	},
 }

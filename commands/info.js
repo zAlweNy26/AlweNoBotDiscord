@@ -25,8 +25,8 @@ module.exports = {
             .addField("ID", user.id, true)
             .addField("Discriminatore", "#" + user.discriminator, true)
             .addField("Soprannome", nick, true)
-			.addField("Account creato il", `${year1}/${month1}/${day1} alle ${hour1}:${minute1}`, true)
-			.addField("Entrato il", `${year}/${month}/${day} alle ${hour}:${minute}`, true)
+			.addField("Account creato il", `${month1}/${day1}/${year1} alle ${hour1}:${minute1}`, true)
+			.addField("Entrato il", `${month}/${day}/${year} alle ${hour}:${minute}`, true)
 			.addField("Ruoli", message.guild.members.cache.get(user.id).roles.cache.size - 1, true)
         message.channel.send(userinfo)
 	},
