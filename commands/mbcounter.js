@@ -9,7 +9,7 @@ module.exports = {
   	userPermissions: ['SEND_MESSAGES', 'EMBED_LINKS'],
 	guildOnly: true,
 	ownerOnly: false,
-	examples: ['mbcounter 742811567988539554 👥Membri : {{membri}}'],
+	examples: ['mbc 742811567988539554 👥Membri : {{membri}}'],
 	args: true,
 	execute(message, args) {
 		if (args[0] == 'delete') {
@@ -30,7 +30,7 @@ module.exports = {
 		let channelID = args[0]
 		args[0] = ''
 
-		if (message.guild.channels.exists('id', channelID)) {
+		if (message.guild.channels.cache.exists('id', channelID)) {
 			const fwEmbed = new Discord.MessageEmbed()
 				.setColor(0xC80000)
 				.setDescription(`*Non hai inserito un ID canale esistente !*`)

@@ -30,7 +30,7 @@ module.exports = {
 		let channelID = args[0]
 		args[0] = ''
 
-		if (message.guild.channels.exists('id', channelID)) {
+		if (message.guild.channels.cache.exists('id', channelID)) {
 			const fwEmbed = new Discord.MessageEmbed()
 				.setColor(0xC80000)
 				.setDescription(`*Non hai inserito un ID canale esistente !*`)
