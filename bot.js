@@ -15,10 +15,15 @@ client.settings = new Enmap({
 
 const defaultSettings = {
     prefix: ".",
-    welcomeID: "benvenuto",
-    welcomeMessage: "Benvenuto nel server **{{user}}** !",
-    farewellID: "addio",
-    farewellMessage: "Addio **{{user}}** !"
+    welcome: false,
+    welcomeID: "0",
+    welcomeMessage: "Benvenuto nel server **{{utente}}** !",
+    farewell: false,
+    farewellID: "0",
+    farewellMessage: "Addio **{{utente}}** !",
+    membersInChannel: false,
+    membersInChannelID: "0",
+    membersInChannelName: "👥 Membri : {{membri}}",
 }
 
 for (const file of commandFiles) {
@@ -30,11 +35,10 @@ let discordMembers = 0
 
 client.once('ready', () => {
     discordMembers = client.users.cache.size
-    /*console.log('AlweNoBot pronto !')
-    client.channels.cache.get("735059907350364180").messages.fetch("735062153727311939")
+    /*client.channels.cache.get("735059907350364180").messages.fetch("735062153727311939")
     client.channels.cache.get("730469363446186025").setName(`👥 MEMBRI : ${discordMembers}`)
     setInterval(() => {
-	srv.getPlayers().then(data => client.channels.cache.get("741088940173295667").setName(`👥 SERVER : ${data}`))
+	    srv.getPlayers().then(data => client.channels.cache.get("741088940173295667").setName(`👥 SERVER : ${data}`))
     }, 10000)*/
 
     console.log(`Bot online ! Insieme a ${client.users.cache.size} utenti, in ${client.guilds.cache.size} server !`)
@@ -49,26 +53,38 @@ client.on("guildDelete", guild => {
 client.on("guildMemberAdd", member => {
     discordMembers = discordMembers + 1
 
-    //client.channels.cache.get("730469363446186025").setName(`👥 MEMBRI : ${discordMembers}`)
-
     client.settings.ensure(member.guild.id, defaultSettings)
-    let welcomeMessage = client.settings.get(member.guild.id, "welcomeMessage")
-    welcomeMessage = welcomeMessage.replace("{{user}}", member.user.tag)
-    member.guild.channels.cache
-        .find(channel => channel.id === client.settings.get(member.guild.id, "welcomeID"))
-        .send(welcomeMessage)
-        .catch(console.error)
+
+    if (client.settings.get(member.guild.id, "welcome") == true) {
+        let welcomeMessage = client.settings.get(member.guild.id, "welcomeMessage")
+        welcomeMessage = welcomeMessage.replace("{{utente}}", member.user.tag)
+        member.guild.channels.cache
+            .find(channel => channel.id === client.settings.get(member.guild.id, "welcomeID"))
+            .send(welcomeMessage)
+            .catch(console.error)
+    }
+
+    if (client.settings.get(member.guild.id, "membersInChannel") == true) {
+        let membersInChannel = client.settings.get(member.guild.id, "membersInChannelName")
+        membersInChannel = membersInChannel.replace("{{membri}}", discordMembers)
+        member.guild.channels.cache
+            .find(channel => channel.id === client.settings.get(member.guild.id, "membersInChannelID"))
+            .setName(membersInChannel)
+            .catch(console.error)
+    }
 })
 
 client.on('guildMemberRemove', member => {
     discordMembers = discordMembers - 1
 
-    let farewellMessage = client.settings.get(member.guild.id, "farewellMessage")
-    farewellMessage = farewellMessage.replace("{{user}}", member.user.tag)
-    member.guild.channels.cache
-        .find(channel => channel.id === client.settings.get(member.guild.id, "farewellID"))
-        .send(farewellMessage)
-        .catch(console.error)
+    if (client.settings.get(member.guild.id, "farewell") == true) {
+        let farewellMessage = client.settings.get(member.guild.id, "farewellMessage")
+        farewellMessage = farewellMessage.replace("{{utente}}", member.user.tag)
+        member.guild.channels.cache
+            .find(channel => channel.id === client.settings.get(member.guild.id, "farewellID"))
+            .send(farewellMessage)
+            .catch(console.error)
+    }
 })
 
 client.on('message', message => {
