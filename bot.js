@@ -1,6 +1,7 @@
 const fs = require('fs')
 const Enmap = require('enmap')
 const Discord = require('discord.js')
+const EnmapPGSql = require('enmap-pgsql')
 const { prefix, version } = require('./config.json')
 const client = new Discord.Client()
 client.commands = new Discord.Collection()
@@ -10,7 +11,11 @@ client.settings = new Enmap({
     name: "settings",
     fetchAll: false,
     autoFetch: true,
-    cloneLevel: 'deep'
+    cloneLevel: 'deep',
+    provider: new EnmapPGSql({ 
+        name: "enmap",
+        connectionString: "postgres://yzoyxsvjwnjdun:ee8c6d76a96e620bb95c06913859ffa2511173a91f6809548769fa81cab19c63@ec2-54-247-78-30.eu-west-1.compute.amazonaws.com:5432/d8lm9c2kfoj8du"
+    })
 })
 
 const defaultSettings = {
