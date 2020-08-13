@@ -22,7 +22,7 @@ module.exports = {
             .setColor('#00AE86')
             .setAuthor("Informazioni su " + user.username, message.client.user.avatarURL())
             .setThumbnail(user.avatarURL({ format: 'png', dynamic: true, size: 4096 }))
-            .addField("ID", user.id, true)
+            .addField("Nome", user.tag, true)
             .addField("Discriminatore", "#" + user.discriminator, true)
             .addField("Soprannome", nick, true)
 			.addField("Account creato il", `${month1}/${day1}/${year1} alle ${hour1}:${minute1}`, true)

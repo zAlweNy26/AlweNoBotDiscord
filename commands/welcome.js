@@ -4,7 +4,7 @@ module.exports = {
   	name: 'welcome',
   	description: '*Mostra un messaggio di benvenuto per ogni utente che entra*',
   	aliases: ['wm'],
-  	category: 'Misc',
+  	category: 'Info',
   	usage: '[id canale] [messaggio]',
   	userPermissions: ['SEND_MESSAGES', 'EMBED_LINKS'],
 	guildOnly: true,

@@ -4,7 +4,7 @@ module.exports = {
   	name: 'farewell',
   	description: '*Mostra un messaggio di addio per ogni utente che esce*',
   	aliases: ['fw'],
-  	category: 'Misc',
+  	category: 'Info',
   	usage: '[id canale] [messaggio]',
   	userPermissions: ['SEND_MESSAGES', 'EMBED_LINKS'],
 	guildOnly: true,
