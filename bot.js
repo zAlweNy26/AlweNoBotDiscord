@@ -116,11 +116,10 @@ client.on('message', message => {
         return message.channel.send("**Non hai i permessi per usare questo comando !**")
     }
 
-	if ((command.args > 0 || command.args == -1) && (command.name != 'help' && command.name != 'h')) {
-        let reply
+	if ((command.args > 0 || command.args == -1) && (command.name != 'help' && command.name != 'h') && !args.length) {
+        let reply = `**Non hai fornito alcun argomento, ${message.author} !**`
 
-        if (args.length == 0) reply = `**Non hai fornito alcun argomento, ${message.author} !**`
-        else if (command.args < args.length) reply = `**Non hai fornito tutti gli argomenti necessari, ${message.author} !**`
+        if (command.args < args.length) reply = `**Non hai fornito tutti gli argomenti necessari, ${message.author} !**`
     
 		if (command.usage) {
 			reply += `\n**Come usarlo :** \`${guildConf.prefix}${command.name} ${command.usage}\``
