@@ -13,8 +13,8 @@ client.settings = new Enmap({
     autoFetch: true,
     cloneLevel: 'deep',
     provider: new EnmapPGSql({ 
-        name: "enmap",
-        connectionString: "postgres://yzoyxsvjwnjdun:ee8c6d76a96e620bb95c06913859ffa2511173a91f6809548769fa81cab19c63@ec2-54-247-78-30.eu-west-1.compute.amazonaws.com:5432/d8lm9c2kfoj8du"
+        name: "settings",
+        connectionString: process.env.DATABASE_URL
     })
 })
 
