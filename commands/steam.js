@@ -16,7 +16,7 @@ module.exports = {
     guildOnly: true,
     ownerOnly: false,
     examples: ['steam zAlweNy26', 'steam 76561198154675159'],
-    args: true,
+    args: -1,
     execute(message, args) {
         let func = this, steamID64, steamUserData, matches, words = 0
         for (let i = 0; i < args[0].length; i++) if (args[0].charAt(i) === '_') words++

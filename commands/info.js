@@ -10,7 +10,7 @@ module.exports = {
 	guildOnly: true,
 	ownerOnly: false,
 	examples: ['info @Example', 'i @Test'],
-	args: false,
+	args: 1,
 	execute(message, args) {
 		let user = message.mentions.users.first(), nick = "Inesistente"
 		if (!args.length) user = message.author

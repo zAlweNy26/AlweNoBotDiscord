@@ -12,7 +12,7 @@ module.exports = {
     guildOnly: true,
     ownerOnly: false,
     examples: ['crypto bitcoin', 'crypto ethereum'],
-    args: true,
+    args: 1,
     execute(message, args) {
         request({
             url: "https://api.coingecko.com/api/v3/coins/markets?vs_currency=eur&ids=" + args[0],

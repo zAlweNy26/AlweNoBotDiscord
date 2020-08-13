@@ -10,7 +10,7 @@ module.exports = {
 	guildOnly: false,
     ownerOnly: false,
     examples: ['h ping'],
-    args: false,
+    args: -1,
 	execute(message, args) {
         const prefix = message.client.settings.get(message.guild.id, "prefix")
 		const { commands } = message.client

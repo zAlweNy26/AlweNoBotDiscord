@@ -10,7 +10,7 @@ module.exports = {
 	guildOnly: true,
 	ownerOnly: false,
 	examples: ['prefix z!', 'prefix a-'],
-	args: true,
+	args: 1,
 	execute(message, args) {
 		if (!isNaN(args[0])) {
             return message.reply('**Non hai inserito un prefisso valido !**')

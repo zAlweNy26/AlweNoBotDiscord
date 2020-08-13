@@ -10,7 +10,7 @@ module.exports = {
     guildOnly: true,
     ownerOnly: false,
     examples: ['poll Prova|si,no,forse', 'pl Titolo|1,2,3'],
-    args: true,
+    args: -1,
     execute(message, args) {
         let question = message.content.substring(message.content.indexOf(" ") + 1, message.content.indexOf("|"));
         let answers = message.content.substring(message.content.indexOf("|") + 1, message.content.length).split(",");

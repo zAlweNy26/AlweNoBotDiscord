@@ -10,7 +10,7 @@ module.exports = {
     guildOnly: true,
     ownerOnly: false,
     examples: ['clear 5', 'clear 126'],
-    args: true,
+    args: 1,
     execute(message, args) {
         const amount = parseInt(args[0])
 
@@ -30,5 +30,5 @@ module.exports = {
             console.error(err)
             message.channel.send("**Non è stato possibile cancellare i messaggi in questo canale !**")
         })
-	  },
+    },
 }

@@ -13,7 +13,7 @@ module.exports = {
     guildOnly: false,
     ownerOnly: true,
     examples: ['stats', 'st'],
-    args: false,
+    args: 0,
     execute(message, args) {
         if (message.author.id !== config.ownerID) {
             const noown = new Discord.MessageEmbed()

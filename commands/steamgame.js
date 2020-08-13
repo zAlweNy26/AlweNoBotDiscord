@@ -12,8 +12,8 @@ module.exports = {
   	userPermissions: ['SEND_MESSAGES', 'EMBED_LINKS'],
 	  guildOnly: true,
 	  ownerOnly: false,
-	  examples: ['steamg 304050', 'sg 310950'],
-	  args: true,
+	  examples: ['steamg 304050', 'sg Street Fighter V'],
+	  args: -1,
 	  execute(message, args) {
         let func = this, steamGameData
         if (isNaN(args.join(" "))) {

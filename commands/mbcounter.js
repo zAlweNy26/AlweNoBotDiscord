@@ -10,7 +10,7 @@ module.exports = {
 	guildOnly: true,
 	ownerOnly: false,
 	examples: ['mbc 742811567988539554 👥Membri : {{membri}}'],
-	args: true,
+	args: -1,
 	execute(message, args) {
 		const mbcEmbed = new Discord.MessageEmbed()
 

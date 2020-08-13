@@ -2,8 +2,6 @@ const mine = require('./../functions.js')
 const Discord = require("discord.js")
 const request = require("request")
 
-process.env.ytAPIkey = "AIzaSyAc4LbMFl06UplRDQo6A1L1CAUHclY1AvE"
-
 module.exports = {
   	name: 'ytinfo',
   	description: '*Mostra informazioni sul canale Youtube inserito*',
@@ -14,7 +12,7 @@ module.exports = {
     guildOnly: true,
     ownerOnly: false,
     examples: ['ytinfo nome testchannel', 'ytinfo id n4nj234b2h34-432b4u2'],
-    args: true,
+    args: -1,
     execute(message, args) {
         let urliduser = ""
         if (args[0] === "nome" || args[0] === "id") {

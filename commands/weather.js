@@ -11,7 +11,7 @@ module.exports = {
     guildOnly: true,
     ownerOnly: false,
     examples: ['weather Milano', 'wt Parigi'],
-    args: true,
+    args: -1,
     execute(message, args) {
         weather.find({search: args.join(" "), degreeType: 'C', lang: 'it-IT'}, function(err, result) {
             if (err || result[0] === undefined) {

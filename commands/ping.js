@@ -11,7 +11,7 @@ module.exports = {
 	guildOnly: false,
 	ownerOnly: false,
 	examples: ['ping', 'p'],
-	args: false,
+	args: 0,
 	execute(message, args) {
 		message.channel.send("***Pingando AlweNoBot...***").then(msg => {
 			let ping = new Discord.MessageEmbed()

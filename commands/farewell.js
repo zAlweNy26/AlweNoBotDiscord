@@ -10,7 +10,7 @@ module.exports = {
 	guildOnly: true,
 	ownerOnly: false,
 	examples: ['farewell 742811567988539554 Addio {{utente}} !', 'fw 742811567988539554 Arrivederci {{utente}} !'],
-	args: true,
+	args: -1,
 	execute(message, args) {
 		const fwEmbed = new Discord.MessageEmbed()
 

@@ -10,7 +10,7 @@ module.exports = {
 	guildOnly: true,
 	ownerOnly: false,
 	examples: ['server', 'sv'],
-	args: false,
+	args: 0,
 	execute(message, args) {
         let server = new Discord.MessageEmbed()
             .setColor('#00AE86')

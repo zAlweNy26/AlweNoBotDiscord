@@ -12,7 +12,7 @@ module.exports = {
     guildOnly: true,
     ownerOnly: false,
     examples: ['color hex 0047AB', 'color rgb 0,255,215', 'color hsv 171,100,50', 'color hsl 215,100,34'],
-    args: true,
+    args: 2,
     execute(message, args) {
         let formats = ['HEX', 'RGB', 'HSL', 'HSV', 'XYZ', 'HCG'], abbr = ""
         if (formats.includes(args[0].toUpperCase()) === false) {

@@ -111,8 +111,11 @@ client.on('message', message => {
         return message.channel.send("**Non hai i permessi per usare questo comando !**")
     }
 
-	if (command.args && !args.length) {
-        let reply = `**Non hai fornito nessun argomento, ${message.author} !**`
+	if ((command.args > 0 || command.args == -1) && !args.length) {
+        let reply
+
+        if (args.length == 0) reply = `**Non hai fornito nessun argomento, ${message.author} !**`
+        else if (command.args != args.length) reply = `**Non hai fornito tutti gli argomenti necessari, ${message.author} !**`
     
 		if (command.usage) {
 			reply += `\n**Come usarlo :** \`${guildConf.prefix}${command.name} ${command.usage}\``
@@ -135,4 +138,4 @@ client.on("disconnected", () => console.log("\nBot disconnesso !"))
     .on('error', err => console.log(err))
     .on('warn', info => console.log(info))
 
-client.login(/*process.env.token*/'Mzg5NDU1Mjk0MDI1MDM5ODcy.Wi1igQ.XxyUe28ZJ1bTFT5Vk7DkpfOFI0w')
+client.login(process.env.token)

@@ -10,7 +10,7 @@ module.exports = {
 	guildOnly: true,
 	ownerOnly: false,
 	examples: ['welcome 742811567988539554 Benvenuto {{utente}} !', 'wm 742811567988539554 Ehy {{utente}} !'],
-	args: true,
+	args: -1,
 	execute(message, args) {
 		const wmEmbed = new Discord.MessageEmbed()
 
