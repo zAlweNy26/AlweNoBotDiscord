@@ -39,5 +39,6 @@ module.exports = {
 
 		mbcEmbed.setColor('#00AE86').setDescription(`*Counter dei membri creato !*`)
 		message.channel.send(mbcEmbed)
+		setTimeout(() => { message.channel.bulkDelete(1).catch(err => { console.error(err) }) }, 2000)
 	},
 }

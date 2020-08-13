@@ -41,5 +41,6 @@ module.exports = {
 
 		fwEmbed.setColor('#00AE86').setDescription(`*Messaggio di addio creato !*`)
 		message.channel.send(fwEmbed)
+		setTimeout(() => { message.channel.bulkDelete(1).catch(err => { console.error(err) }) }, 2000)
 	},
 }

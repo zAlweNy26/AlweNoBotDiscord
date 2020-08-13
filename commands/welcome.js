@@ -39,5 +39,6 @@ module.exports = {
 
 		wmEmbed.setColor('#00AE86').setDescription(`*Messaggio di benvenuto creato !*`)
 		message.channel.send(wmEmbed)
+		setTimeout(() => { message.channel.bulkDelete(1).catch(err => { console.error(err) }) }, 2000)
 	},
 }
