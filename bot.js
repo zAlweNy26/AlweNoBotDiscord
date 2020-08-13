@@ -116,7 +116,7 @@ client.on('message', message => {
         return message.channel.send("**Non hai i permessi per usare questo comando !**")
     }
 
-	if ((command.args > 0 || command.args == -1) && (command.name != 'help' || command.name != 'h')) {
+	if ((command.args > 0 || command.args == -1) && (command.name != 'help' && command.name != 'h')) {
         let reply
 
         if (args.length == 0) reply = `**Non hai fornito alcun argomento, ${message.author} !**`
