@@ -66,7 +66,7 @@ client.on("guildMemberAdd", member => {
 
     if (client.settings.get(member.guild.id, "membersInChannel") == true) {
         let membersInChannel = client.settings.get(member.guild.id, "membersInChannelName")
-        membersInChannel = membersInChannel.replace("{{membri}}", member.guild.members.cache.size)
+        membersInChannel = membersInChannel.replace("{{membri}}", member.guild.members.fetch().then(r => r.filter(m => !m.user.bot).size))
         member.guild.channels.cache
             .find(channel => channel.id === client.settings.get(member.guild.id, "membersInChannelID"))
             .setName(membersInChannel)
@@ -87,13 +87,25 @@ client.on('guildMemberRemove', member => {
 
     if (client.settings.get(member.guild.id, "membersInChannel") == true) {
         let membersInChannel = client.settings.get(member.guild.id, "membersInChannelName")
-        membersInChannel = membersInChannel.replace("{{membri}}", member.guild.members.cache.size)
+        membersInChannel = membersInChannel.replace("{{membri}}", member.guild.members.fetch().then(r => r.filter(m => !m.user.bot).size))
         member.guild.channels.cache
             .find(channel => channel.id === client.settings.get(member.guild.id, "membersInChannelID"))
             .setName(membersInChannel)
             .catch(console.error)
     }
 })
+
+bot.on('messageReactionAdd', (reaction, user) => {
+    if (reaction.emoji.name === '✅' && reaction.message.id === "743529778795118683") {
+        reaction.message.guild.members.cache.find(member => member.id === user.id).roles.add('742833112245076029');
+    }
+});
+
+bot.on('messageReactionRemove', (reaction, user) => {  
+    if (reaction.emoji.name === '✅' && reaction.message.id === "743529778795118683") {
+        reaction.message.guild.members.cache.find(member => member.id === user.id).roles.remove('742833112245076029');
+    }
+});
 
 client.on('message', message => {
     if(!message.guild || message.author.bot) return;
