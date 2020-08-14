@@ -95,13 +95,13 @@ client.on('guildMemberRemove', member => {
     }
 })
 
-bot.on('messageReactionAdd', (reaction, user) => {
+client.on('messageReactionAdd', (reaction, user) => {
     if (reaction.emoji.name === '✅' && reaction.message.id === "743529778795118683") {
         reaction.message.guild.members.cache.find(member => member.id === user.id).roles.add('742833112245076029');
     }
 });
 
-bot.on('messageReactionRemove', (reaction, user) => {  
+client.on('messageReactionRemove', (reaction, user) => {  
     if (reaction.emoji.name === '✅' && reaction.message.id === "743529778795118683") {
         reaction.message.guild.members.cache.find(member => member.id === user.id).roles.remove('742833112245076029');
     }
