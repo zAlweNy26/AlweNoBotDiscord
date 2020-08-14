@@ -37,11 +37,7 @@ for (const file of commandFiles) {
 }
 
 client.once('ready', () => {
-    /*client.channels.cache.get("735059907350364180").messages.fetch("735062153727311939")
-    client.channels.cache.get("730469363446186025").setName(`👥 MEMBRI : ${discordMembers}`)
-    setInterval(() => {
-	    srv.getPlayers().then(data => client.channels.cache.get("741088940173295667").setName(`👥 SERVER : ${data}`))
-    }, 10000)*/
+    client.channels.cache.get("743412863032623204").messages.fetch("743529778795118683");
 
     console.log(`Bot online ! Insieme a ${client.users.cache.size} utenti, in ${client.guilds.cache.size} server !`)
     client.user.setPresence({ activity: { name: `${prefix}help | v${version}`, type: 'PLAYING' }, status: 'online' })
