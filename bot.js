@@ -96,6 +96,7 @@ client.on('guildMemberRemove', member => {
 })
 
 client.on('messageReactionAdd', (reaction, user) => {
+    console.log(reaction.emoji.name + " | " + reaction.message.id)
     if (reaction.emoji.name === '✅' && reaction.message.id === "743529778795118683") {
         reaction.message.guild.members.cache.find(member => member.id === user.id).roles.add('742833112245076029');
     }
