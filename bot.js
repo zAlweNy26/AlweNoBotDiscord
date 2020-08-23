@@ -64,11 +64,13 @@ client.on("guildMemberAdd", member => {
 
     if (client.settings.get(member.guild.id, "membersInChannel") == true) {
         let membersInChannel = client.settings.get(member.guild.id, "membersInChannelName")
-        membersInChannel = membersInChannel.replace("{{membri}}", member.guild.members.fetch().then(r => r.filter(m => !m.user.bot).size))
-        member.guild.channels.cache
-            .find(channel => channel.id === client.settings.get(member.guild.id, "membersInChannelID"))
-            .setName(membersInChannel)
-            .catch(console.error)
+        member.guild.members.fetch().then(r => {
+            membersInChannel = membersInChannel.replace("{{membri}}", r.filter(m => !m.user.bot).size)
+            member.guild.channels.cache
+                .find(channel => channel.id === client.settings.get(member.guild.id, "membersInChannelID"))
+                .setName(membersInChannel)
+                .catch(console.error)
+        })
     }
 })
 
@@ -86,11 +88,13 @@ client.on('guildMemberRemove', member => {
 
     if (client.settings.get(member.guild.id, "membersInChannel") == true) {
         let membersInChannel = client.settings.get(member.guild.id, "membersInChannelName")
-        membersInChannel = membersInChannel.replace("{{membri}}", member.guild.members.fetch().then(r => r.filter(m => !m.user.bot).size))
-        member.guild.channels.cache
-            .find(channel => channel.id === client.settings.get(member.guild.id, "membersInChannelID"))
-            .setName(membersInChannel)
-            .catch(console.error)
+        member.guild.members.fetch().then(r => {
+            membersInChannel = membersInChannel.replace("{{membri}}", r.filter(m => !m.user.bot).size)
+            member.guild.channels.cache
+                .find(channel => channel.id === client.settings.get(member.guild.id, "membersInChannelID"))
+                .setName(membersInChannel)
+                .catch(console.error)
+        })
     }
 })
 
