@@ -22,7 +22,7 @@ const defaultSettings = {
     prefix: ".",
     welcome: true,
     welcomeID: "742811567988539554",
-    welcomeMessage: "Benvenuto **{{utente}}** su **RDA - Skin & Scripts** ! :tada: Ottieni il ruolo <@742833112245076029> nel canale <#743412863032623204> !",
+    welcomeMessage: "Benvenuto **{{utente}}** su **RDA - Skin & Scripts** ! :tada: Ottieni il ruolo <@&742833112245076029> nel canale <#743412863032623204> !",
     farewell: true,
     farewellID: "742833934790033489",
     farewellMessage: "Ci dispiace che te ne sia andato {{utente}}. Fai buon viaggio ! :rolling_eyes:",
