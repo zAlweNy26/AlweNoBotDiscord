@@ -9,7 +9,7 @@ module.exports = {
   	userPermissions: ['SEND_MESSAGES', 'EMBED_LINKS'],
 	guildOnly: false,
     ownerOnly: false,
-    examples: ['h ping'],
+    examples: ['h ping', 'help'],
     args: -1,
 	execute(message, args) {
         const prefix = message.client.settings.get(message.guild.id, "prefix")

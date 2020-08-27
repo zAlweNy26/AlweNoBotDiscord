@@ -8,12 +8,12 @@ module.exports = {
   	description: '*Avvia il gioco "Chi vuol essere milionario ?" con il tempo scelto per ogni domanda*',
   	aliases: ['cvem'],
     category: 'Misc',
-    usage: '[tempo]',
+    usage: '<tempo>',
     userPermissions: ['SEND_MESSAGES', 'EMBED_LINKS'],
     guildOnly: true,
     ownerOnly: false,
-    examples: ['cvem 60'],
-    args: -1,
+    examples: ['cvem 60', 'cvem'],
+    args: 0,
     execute(message, args) {
         let timer
         if (isPlaying) {
