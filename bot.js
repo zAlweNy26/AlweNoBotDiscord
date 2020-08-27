@@ -39,7 +39,7 @@ for (const file of commandFiles) {
 let reactionMessage
 
 client.once('ready', () => {
-    reactionMessage = client.channels.cache.get("743412863032623204").messages.fetch("743529778795118683");
+    reactionMessage = client.channels.cache.get("743412863032623204").messages.fetch("743529778795118683")
 
     console.log(`Bot online ! Insieme a ${client.users.cache.size} utenti, in ${client.guilds.cache.size} server !`)
     client.user.setPresence({ activity: { name: `${prefix}help | v${version}`, type: 'PLAYING' }, status: 'online' })
@@ -100,18 +100,18 @@ client.on('guildMemberRemove', member => {
 
 client.on('messageReactionAdd', (reaction, user) => {
     if (reaction.emoji.name === '✅' && reaction.message.id === "743529778795118683") {
-        reaction.message.guild.members.cache.find(member => member.id === user.id).roles.add('742833112245076029');
+        reaction.message.guild.members.cache.find(member => member.id === user.id).roles.add('742833112245076029')
     }
-});
+})
 
 client.on('messageReactionRemove', (reaction, user) => {  
     if (reaction.emoji.name === '✅' && reaction.message.id === "743529778795118683") {
-        reaction.message.guild.members.cache.find(member => member.id === user.id).roles.remove('742833112245076029');
+        reaction.message.guild.members.cache.find(member => member.id === user.id).roles.remove('742833112245076029')
     }
-});
+})
 
 client.on('message', message => {
-    if(!message.guild || message.author.bot) return;
+    if(!message.guild || message.author.bot) return
 
     const guildConf = client.settings.ensure(message.guild.id, defaultSettings)
 
