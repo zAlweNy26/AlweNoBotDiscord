@@ -25,6 +25,11 @@ module.exports = {
                 .setDescription(`***Non hai inserito un numero valido !***`)
             return message.channel.send(err)
         }
+        if (parseInt(args[0]) > 120) {
+            let err = new Discord.MessageEmbed().setColor('#C80000')
+                .setDescription(`***Non puoi inserire un intervallo di tempo superiore ai 2 minuti !***`)
+            return message.channel.send(err)
+        }
         isPlaying = true
         var voiceChannel = message.member.voice.channel
         var connection, dispatcher
