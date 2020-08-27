@@ -13,22 +13,27 @@ module.exports = {
     guildOnly: true,
     ownerOnly: false,
     examples: ['cvem 60'],
-    args: 1,
+    args: -1,
     execute(message, args) {
+        let timer
         if (isPlaying) {
             let err = new Discord.MessageEmbed().setColor('#C80000')
                 .setDescription(`***C'è già una partita in corso !***`)
             return message.channel.send(err)
         }
-        if (isNaN(parseInt(args[0]))) {
-            let err = new Discord.MessageEmbed().setColor('#C80000')
-                .setDescription(`***Non hai inserito un numero valido !***`)
-            return message.channel.send(err)
-        }
-        if (parseInt(args[0]) > 120) {
-            let err = new Discord.MessageEmbed().setColor('#C80000')
-                .setDescription(`***Non puoi inserire un intervallo di tempo superiore ai 2 minuti !***`)
-            return message.channel.send(err)
+        if (!args.length) timer = 120
+        else {
+            if (isNaN(parseInt(args[0]))) {
+                let err = new Discord.MessageEmbed().setColor('#C80000')
+                    .setDescription(`***Non hai inserito un numero valido !***`)
+                return message.channel.send(err)
+            }
+            if (parseInt(args[0]) > 120) {
+                let err = new Discord.MessageEmbed().setColor('#C80000')
+                    .setDescription(`***Non puoi inserire un intervallo di tempo superiore ai 2 minuti !***`)
+                return message.channel.send(err)
+            }
+            timer = parseInt(args[0])
         }
         isPlaying = true
         var voiceChannel = message.member.voice.channel
@@ -67,7 +72,7 @@ module.exports = {
             const collector = new Discord.ReactionCollector(msg, (r, user) => user.id == message.author.id && 
                 (r.emoji.name == '👤' || r.emoji.name == '❔' || r.emoji.name == '🪓' || r.emoji.name == '☎️' || 
                 r.emoji.name == '👥' || r.emoji.name == '✅' || r.emoji.name == '❌' || r.emoji.name == '⁉️' || 
-                r.emoji.name == '🚫'), { dispose: true, idle: (parseInt(args[0]) + 19 /*19 secondi della sigla */) * 1000/*, time: args[0] * 1000*/ })
+                r.emoji.name == '🚫'), { dispose: true, idle: (timer + 19 /*19 secondi della sigla */) * 1000/*, time: timer * 1000*/ })
 
             collector.on('collect', r => {
                 let musicURL = null
@@ -107,7 +112,7 @@ module.exports = {
                     message.reply('***Un suono è già stato avviato, attendi che finisca per avviarne un altro !***')
 
                 if (musicURL != null && !isMusicOn) {
-                    collector.resetTimer({ idle: parseInt(args[0]) * 1000 })
+                    collector.resetTimer({ idle: timer * 1000 })
                     isMusicOn = true
                     dispatcher = connection.play(ytdl(musicURL))
                     dispatcher.on("finish", () => {
@@ -129,7 +134,7 @@ module.exports = {
                 voiceChannel.leave()
                 msg.channel.bulkDelete(1)
                 if (reason != "finish")
-                    message.reply(`***non hai eseguito alcuna azione dopo ${args[0]} secondi, fine del gioco !***`)
+                    message.reply(`***non hai eseguito alcuna azione dopo ${timer} secondi, fine del gioco !***`)
             })
         })
     },
