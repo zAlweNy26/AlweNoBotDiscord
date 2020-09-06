@@ -1,5 +1,5 @@
 {
-  "name": "alwenobot",
+  "name": "alwenobot_discord",
   "version": "1.0.0",
   "description": "Bot per Discord in Node.js di zAlweNy26 !",
   "main": "bot.js",
@@ -14,7 +14,7 @@
     "color-convert": "^2.0.1",
     "cpu-stat": "^2.0.1",
     "discord.js": "^12.2.0",
-    "enmap": "3.1.4",
+    "enmap": "^5.7.1",
     "enmap-pgsql": "^2.0.1",
     "ffmpeg": "0.0.4",
     "fluent-ffmpeg": "^2.1.2",
