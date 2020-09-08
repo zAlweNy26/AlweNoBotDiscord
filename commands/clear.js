@@ -2,7 +2,7 @@ const Discord = require('discord.js')
 
 module.exports = {
 	name: 'clear',
-    description: '*Cancella un numero specifico di messaggi nel canale in cui viene eseguito*',
+    description: '*Cancella un numero specifico di messaggi nel canale in cui viene eseguito.*',
     aliases: ['cl'],
     category: 'Mod',
     usage: '[numero]',

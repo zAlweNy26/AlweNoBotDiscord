@@ -3,7 +3,7 @@ const weather = require('weather-js')
 
 module.exports = {
   	name: 'weather',
-  	description: '*Mostra informazioni meteo della località inserita*',
+  	description: '*Mostra informazioni meteo della località inserita.*',
   	aliases: ['wt'],
   	category: 'Misc',
   	usage: '[località]',

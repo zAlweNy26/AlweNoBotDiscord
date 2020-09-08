@@ -2,7 +2,7 @@ const Discord = require('discord.js')
 
 module.exports = {
   	name: 'farewell',
-  	description: '*Mostra un messaggio di addio per ogni utente che esce*',
+  	description: '*Mostra un messaggio di addio per ogni utente che esce.*',
   	aliases: ['fw'],
   	category: 'Info',
   	usage: '[id canale] [messaggio]',

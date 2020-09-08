@@ -8,7 +8,7 @@ const _ = require("underscore")
 
 module.exports = {
   	name: 'steam',
-  	description: '*Mostra informazioni sull\'account Steam inserito*',
+  	description: '*Mostra informazioni sull\'account Steam inserito.*',
   	aliases: ['st'],
   	category: 'Misc',
   	usage: '[nickname|steamid]',

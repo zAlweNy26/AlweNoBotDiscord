@@ -5,7 +5,7 @@ let isPlaying = false, isMusicOn = false
 
 module.exports = {
     name: 'cvem',
-  	description: '*Avvia il gioco "Chi vuol essere milionario ?" con il tempo scelto per ogni domanda*',
+  	description: '*Avvia il gioco "Chi vuol essere milionario ?" con il tempo scelto per ogni domanda.*',
   	aliases: ['cvem'],
     category: 'Misc',
     usage: '<tempo>',

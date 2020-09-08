@@ -5,7 +5,7 @@ const Discord = require('discord.js')
 
 module.exports = {
   	name: 'steamgame',
-  	description: '*Mostra informazioni sul gioco di Steam inserito*',
+  	description: '*Mostra informazioni sul gioco di Steam inserito.*',
   	aliases: ['steamgame', 'steamg', 'sgame', 'sg'],
   	category: 'Misc',
   	usage: '[appid]',

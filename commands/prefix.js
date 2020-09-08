@@ -2,7 +2,7 @@ const Discord = require('discord.js')
 
 module.exports = {
   	name: 'prefix',
-  	description: '*Modifica il prefisso per i comandi di AlweNoBot*',
+  	description: '*Modifica il prefisso per i comandi di AlweNoBot.*',
   	aliases: ['p'],
   	category: 'Mod',
   	usage: '[prefisso]',

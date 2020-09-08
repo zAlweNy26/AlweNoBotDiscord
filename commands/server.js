@@ -2,7 +2,7 @@ const Discord = require('discord.js')
 
 module.exports = {
   	name: 'server',
-  	description: '*Mostra informazioni sul server in cui viene eseguito*',
+  	description: '*Mostra informazioni sul server in cui viene eseguito.*',
   	aliases: ['sv'],
   	category: 'Info',
   	usage: '',

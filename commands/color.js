@@ -4,7 +4,7 @@ const Jimp = require('jimp')
 
 module.exports = {
   	name: 'color',
-  	description: '*Mostra ii diversi formati del colore inserito*',
+  	description: '*Mostra ii diversi formati del colore inserito.*',
   	aliases: ['cl'],
   	category: 'Misc',
   	usage: '[formato] [valore]',

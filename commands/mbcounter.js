@@ -2,7 +2,7 @@ const Discord = require('discord.js')
 
 module.exports = {
   	name: 'mbcounter',
-  	description: '*Crea un counter dei membri del server in un canale vocale*',
+  	description: '*Crea un counter dei membri del server in un canale vocale.*',
   	aliases: ['mbc'],
   	category: 'Info',
   	usage: '[id canale] [messaggio]',

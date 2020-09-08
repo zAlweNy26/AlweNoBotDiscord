@@ -1,3 +1,4 @@
+require('dotenv').config();
 const fs = require('fs')
 const Enmap = require('enmap')
 const Discord = require('discord.js')
@@ -12,10 +13,10 @@ client.settings = new Enmap({
     fetchAll: false,
     autoFetch: true,
     cloneLevel: 'deep',
-    provider: new EnmapPGSql({ 
+    /*provider: new EnmapPGSql({ 
         name: "settings",
         connectionString: process.env.DATABASE_URL
-    })
+    })*/
 })
 
 const defaultSettings = {

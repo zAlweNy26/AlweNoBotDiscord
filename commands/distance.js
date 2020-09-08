@@ -3,7 +3,7 @@ const request = require("request")
 
 module.exports = {
   	name: 'distance',
-  	description: '*Mostra informazioni sulla distanza tra una località e un\'altra*',
+  	description: '*Mostra informazioni sulla distanza tra una località e un\'altra.*',
   	aliases: ['dt'],
   	category: 'Misc',
   	usage: '[mezzo] [ottimizzazione] [partenza] [destinazione]',

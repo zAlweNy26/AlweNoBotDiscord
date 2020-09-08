@@ -2,7 +2,7 @@ const Discord = require("discord.js");
 
 module.exports = {
   	name: 'poll',
-  	description: '*Crea un sondaggio*',
+  	description: '*Crea un sondaggio con gli argomenti inseriti.*',
   	aliases: ['pl'],
   	category: 'Misc',
   	usage: '[titolo] [opzione1,opzione2,...]',

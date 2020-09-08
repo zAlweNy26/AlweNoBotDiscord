@@ -2,7 +2,7 @@ const Discord = require('discord.js')
 
 module.exports = {
   	name: 'info',
-  	description: '*Mostra informazioni su un utente/bot del server o su te stesso*',
+  	description: '*Mostra informazioni su un utente/bot del server o su te stesso.*',
   	aliases: ['i'],
   	category: 'Info',
   	usage: '[@utente]',

@@ -2,7 +2,7 @@ const Discord = require('discord.js')
 
 module.exports = {
   	name: 'welcome',
-  	description: '*Mostra un messaggio di benvenuto per ogni utente che entra*',
+  	description: '*Mostra un messaggio di benvenuto per ogni utente che entra.*',
   	aliases: ['wm'],
   	category: 'Info',
   	usage: '[id canale] [messaggio]',

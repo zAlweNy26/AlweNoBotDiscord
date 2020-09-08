@@ -5,7 +5,7 @@ const cpuStat = require("cpu-stat")
 
 module.exports = {
   	name: 'stats',
-  	description: '*Mostra le statistiche su AlweNoBot* ***[SOLO PER IL PROPRIETARIO]***',
+  	description: '*Mostra le statistiche su AlweNoBot* ***[SOLO PER IL PROPRIETARIO DEL BOT]***',
   	aliases: ['st'],
   	category: 'Info',
   	usage: '',

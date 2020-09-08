@@ -3,7 +3,7 @@ const mine = require('./../functions.js')
 
 module.exports = {
   	name: 'ping',
-  	description: '*Mostra la latenza tra te e il bot in ms (millisecondi)*',
+  	description: '*Mostra la latenza tra te e il bot in ms (millisecondi).*',
   	aliases: ['p'],
   	category: 'Info',
   	usage: '',

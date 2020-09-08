@@ -25,7 +25,7 @@ module.exports = {
                 .setAuthor(`Comandi totali : ${infocmds.length + misccmds.length + modecmds.length}`, message.client.user.avatarURL)
                 .setDescription(`**[ ]** indica **obbligatorio**\n**< >** indica *opzionale*`)
                 .addFields(
-                    { name: 'Help', value: "**Descrizione :** *Mostra descrizioni avanzate per i comandi di* **AlweNoBot**\n" +
+                    { name: 'Help', value: "**Descrizione :** *Mostra descrizioni avanzate per i comandi di* ***AlweNoBot*** *!*\n" +
                             `\`${prefix}help\` **|** \`${prefix}help <comando>\`` },
                     { name: 'Informazione', value: `\`${infocmds.join('`**,** `')}\``, inline: true },
                     { name: 'Misti', value: `\`${misccmds.join('`**,** `')}\``, inline: true },

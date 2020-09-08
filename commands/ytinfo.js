@@ -4,7 +4,7 @@ const request = require("request")
 
 module.exports = {
   	name: 'ytinfo',
-  	description: '*Mostra informazioni sul canale Youtube inserito*',
+  	description: '*Mostra informazioni sul canale Youtube inserito.*',
   	aliases: ['ytf'],
   	category: 'Misc',
   	usage: '[nome/id] [valore]',

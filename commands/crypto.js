@@ -4,7 +4,7 @@ const _ = require("underscore")
 
 module.exports = {
   	name: 'crypto',
-  	description: '*Mostra informazioni sulla cryptovaluta inserita*',
+  	description: '*Mostra informazioni sulla cryptovaluta inserita.*',
   	aliases: ['cp'],
   	category: 'Misc',
   	usage: '[moneta]',
