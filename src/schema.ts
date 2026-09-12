@@ -13,6 +13,19 @@ export const guildSettings = sqliteTable("guild_settings", {
   counterFormat: text("counter_format"),
 });
 
+export const summaryChannels = sqliteTable(
+  "summary_channels",
+  {
+    guildId: text("guild_id").notNull(),
+    channelId: text("channel_id").notNull(),
+    threshold: integer("threshold").notNull().default(100),
+    lastMessageId: text("last_message_id").notNull(),
+    failureCount: integer("failure_count").notNull().default(0),
+    createdAt: integer("created_at").notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.guildId, table.channelId] })],
+);
+
 export const roleButtons = sqliteTable(
   "role_buttons",
   {

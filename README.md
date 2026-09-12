@@ -26,8 +26,9 @@ src/
   router.ts             interaction router (commands + message components)
   respond.ts            response helpers (embeds, ephemeral replies)
   verify.ts             Ed25519 interaction signature verification
-  db.ts                 Drizzle queries for guild settings and role buttons
+  db.ts                 Drizzle queries for guild settings, role buttons and summary channels
   schema.ts             Drizzle schema
+  summary.ts            cron poller: summarizes watched channels with Workers AI
   commands/             one file per slash command + registry/index
   gateway/GatewayDO.ts  Durable Object holding the Discord gateway
   gateway/messages.ts   message template helpers ({{utente}}, {{membri}})
@@ -71,16 +72,17 @@ BING_MAPS_KEY=
 5. In the Discord Developer Portal:
    - set the Interactions Endpoint URL to `https://<worker>.<subdomain>.workers.dev/interactions`
    - enable the **Server Members Intent** (required for welcome/farewell/counter)
+   - enable the **Message Content Intent** (required for `/summary`)
 6. `bun run register` — registers the global slash commands
 
 ## Commands
 
 - Info: `/ping`, `/info`, `/server`, `/stats` (owner only)
-- Mod: `/help`, `/clear`, `/welcome`, `/farewell`, `/counter`, `/nickall` (server owner only), `/reactionrole`
+- Mod: `/help`, `/clear`, `/welcome`, `/farewell`, `/counter`, `/summary`, `/nickall` (server owner only), `/reactionrole`
 - Misc: `/color`, `/crypto`, `/distance`, `/weather`, `/steam`, `/steamgame`, `/ytinfo`
 
 ## Notes
 
-- No privileged Message Content intent is needed.
+- The privileged **Message Content Intent** must be enabled for `/summary`: without it, the Discord API returns empty `content` for channel history. The AI summaries run on Workers AI (`AI` binding) with `@cf/zai-org/glm-4.7-flash`.
 - The member counter channel rename is debounced (10 minutes) to stay well inside Discord rate limits.
 - Legacy `steam_countries.min.json` was replaced by the `src/lib/countries.ts` map; the counter format supports `{{membri}}`.

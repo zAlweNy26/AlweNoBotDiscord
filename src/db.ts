@@ -1,6 +1,6 @@
 import { and, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
-import { guildSettings, roleButtons } from "./schema";
+import { guildSettings, roleButtons, summaryChannels } from "./schema";
 
 export interface GuildSettings {
   guildId: string;
@@ -60,6 +60,97 @@ export async function updateGuildSettings(
   if (Object.keys(values).length === 0) return;
   await ensureGuildSettings(db, guildId);
   await orm(db).update(guildSettings).set(values).where(eq(guildSettings.guildId, guildId));
+}
+
+export interface SummaryChannel {
+  guildId: string;
+  channelId: string;
+  threshold: number;
+  lastMessageId: string;
+  failureCount: number;
+  createdAt: number;
+}
+
+export interface SummaryProgressPatch {
+  lastMessageId?: string;
+  failureCount?: number;
+}
+
+export async function listSummaryChannels(db: D1Database): Promise<SummaryChannel[]> {
+  return orm(db).select().from(summaryChannels);
+}
+
+export async function listSummaryChannelsForGuild(
+  db: D1Database,
+  guildId: string,
+): Promise<SummaryChannel[]> {
+  return orm(db)
+    .select()
+    .from(summaryChannels)
+    .where(eq(summaryChannels.guildId, guildId))
+    .orderBy(summaryChannels.channelId);
+}
+
+export async function getSummaryChannel(
+  db: D1Database,
+  guildId: string,
+  channelId: string,
+): Promise<SummaryChannel | null> {
+  const rows = await orm(db)
+    .select()
+    .from(summaryChannels)
+    .where(and(eq(summaryChannels.guildId, guildId), eq(summaryChannels.channelId, channelId)))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+export async function addSummaryChannel(
+  db: D1Database,
+  guildId: string,
+  channelId: string,
+  threshold: number,
+  baselineMessageId: string,
+): Promise<void> {
+  await orm(db)
+    .insert(summaryChannels)
+    .values({
+      guildId,
+      channelId,
+      threshold,
+      lastMessageId: baselineMessageId,
+      failureCount: 0,
+      createdAt: Date.now(),
+    })
+    .onConflictDoUpdate({
+      target: [summaryChannels.guildId, summaryChannels.channelId],
+      set: { threshold, lastMessageId: baselineMessageId, failureCount: 0 },
+    });
+}
+
+export async function removeSummaryChannel(
+  db: D1Database,
+  guildId: string,
+  channelId: string,
+): Promise<void> {
+  await orm(db)
+    .delete(summaryChannels)
+    .where(and(eq(summaryChannels.guildId, guildId), eq(summaryChannels.channelId, channelId)));
+}
+
+export async function updateSummaryProgress(
+  db: D1Database,
+  guildId: string,
+  channelId: string,
+  patch: SummaryProgressPatch,
+): Promise<void> {
+  const values: SummaryProgressPatch = {};
+  if (patch.lastMessageId !== undefined) values.lastMessageId = patch.lastMessageId;
+  if (patch.failureCount !== undefined) values.failureCount = patch.failureCount;
+  if (Object.keys(values).length === 0) return;
+  await orm(db)
+    .update(summaryChannels)
+    .set(values)
+    .where(and(eq(summaryChannels.guildId, guildId), eq(summaryChannels.channelId, channelId)));
 }
 
 export interface RoleButton {

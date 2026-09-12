@@ -60,5 +60,6 @@ export default {
   async scheduled(_controller: ScheduledController, env: Env): Promise<void> {
     const stub = env.GATEWAY.get(env.GATEWAY.idFromName("main"));
     await stub.fetch("https://gateway.internal/ensure");
+    await stub.fetch("https://gateway.internal/summary-poll");
   },
 } satisfies ExportedHandler<Env>;

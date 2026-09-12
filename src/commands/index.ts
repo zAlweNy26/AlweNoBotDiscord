@@ -13,6 +13,7 @@ import { serverCommand } from "./server";
 import { statsCommand } from "./stats";
 import { steamCommand } from "./steam";
 import { steamgameCommand } from "./steamgame";
+import { summaryCommand } from "./summary";
 import { weatherCommand } from "./weather";
 import { ytinfoCommand } from "./ytinfo";
 
@@ -34,5 +35,6 @@ registerCommand(nickallCommand);
 registerCommand(steamCommand);
 registerCommand(steamgameCommand);
 registerCommand(reactionroleCommand);
+registerCommand(summaryCommand);
 
 export { commandMap, commands };

@@ -6,6 +6,7 @@ import {
   DEFAULT_WELCOME_MESSAGE,
   getGuildSettings,
 } from "../db";
+import { runSummaryPoll } from "../summary";
 import { fillMessage } from "./messages";
 
 const GATEWAY_URL = "wss://gateway.discord.gg";
@@ -60,6 +61,7 @@ export class GatewayDO {
   private resumeBase = GATEWAY_URL;
   private heartbeatInterval = DEFAULT_HEARTBEAT_INTERVAL_MS;
   private awaitingAck = false;
+  private summaryPollRunning = false;
   private readonly rest: REST;
 
   constructor(
@@ -74,6 +76,18 @@ export class GatewayDO {
     if (url.pathname === "/ensure") {
       await this.ensureConnected();
       return Response.json({ connected: this.isOpen(), session: this.sessionId !== null });
+    }
+    if (url.pathname === "/summary-poll") {
+      if (this.summaryPollRunning) {
+        return Response.json({ skipped: true });
+      }
+      this.summaryPollRunning = true;
+      try {
+        const result = await runSummaryPoll(this.env, { rest: this.rest, ai: this.env.AI });
+        return Response.json(result);
+      } finally {
+        this.summaryPollRunning = false;
+      }
     }
     return new Response("Not Found", { status: 404 });
   }
