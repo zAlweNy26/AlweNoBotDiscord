@@ -31,6 +31,10 @@ const DEFAULT_HEARTBEAT_INTERVAL_MS = 41_250;
 
 const SESSION_INVALID_CODES = [4004, 4010, 4011, 4012, 4013, 4014];
 
+export function toHttpUrl(url: string): string {
+  return url.replace(/^wss:/, "https:").replace(/^ws:/, "http:");
+}
+
 interface GatewayMessage {
   op: number;
   s?: number | null;
@@ -121,7 +125,7 @@ export class GatewayDO {
     this.connecting = true;
     try {
       await this.loadState();
-      const response = await fetch(`${this.resumeBase}/?v=10&encoding=json`, {
+      const response = await fetch(`${toHttpUrl(this.resumeBase)}/?v=10&encoding=json`, {
         headers: { Upgrade: "websocket" },
       });
       const socket = response.webSocket;
