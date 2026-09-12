@@ -24,7 +24,6 @@
   "devDependencies": {
     "@biomejs/biome": "^2.5.13",
     "@cloudflare/vitest-pool-workers": "^0.22.0",
-    "@types/color-convert": "^3.0.1",
     "@types/node": "^22.20.2",
     "drizzle-kit": "^0.31.10",
     "typescript": "^7.0.2",

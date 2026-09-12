@@ -14,7 +14,6 @@
       "devDependencies": {
         "@biomejs/biome": "^2.5.13",
         "@cloudflare/vitest-pool-workers": "^0.22.0",
-        "@types/color-convert": "^3.0.1",
         "@types/node": "^22.20.2",
         "drizzle-kit": "^0.31.10",
         "typescript": "^7.0.2",
@@ -243,8 +242,6 @@
     "@standard-schema/spec": ["@standard-schema/spec@1.1.0", "", {}, "sha512-l2aFy5jALhniG5HgqrD6jXLi/rUWrKvqN/qJx6yoJsgKhblVd+iqqU4RCXavm/jPityDo5TCvKMnpjKnOriy0w=="],
 
     "@types/chai": ["@types/chai@5.2.3", "", { "dependencies": { "@types/deep-eql": "*", "assertion-error": "^2.0.1" } }, "sha512-Mw558oeA9fFbv65/y4mHtXDs9bPnFMZAL/jxdPFUpOHHIXX91mcgEHbS5Lahr+pwZFR8A7GQleRWeI6cGFC2UA=="],
-
-    "@types/color-convert": ["@types/color-convert@3.0.1", "", { "dependencies": { "color-convert": "*" } }, "sha512-Wj7O4Y7tPo/3y9z4K0XRLbLBP2hCHq2vlmLkR0uQDGmLdoUVDmUrXy50ZffMxZKzBpYxFT+4FnDT8xzMlnKRQQ=="],
 
     "@types/deep-eql": ["@types/deep-eql@4.0.2", "", {}, "sha512-c9h9dVVMigMPc4bwTvC5dxqtqJZwQPePsWjPlpSOnojbor6pGqdk541lfA7AqFQr5pB1BRdq0juY9db81BwyFw=="],
 
