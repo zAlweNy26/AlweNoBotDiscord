@@ -1,0 +1,30 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "alwenobot",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-08-22",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": {
+    "enabled": true
+  },
+  "vars": {
+    "DISCORD_APPLICATION_ID": "389455294025039872",
+    "DISCORD_PUBLIC_KEY": "REPLACE_ME",
+    "OWNER_ID": "174602707791904769"
+  },
+  "durable_objects": {
+    "bindings": [{ "name": "GATEWAY", "class_name": "GatewayDO" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["GatewayDO"] }],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "alwenobot",
+      "database_id": "8cc75a4b-c389-4a4d-8676-0e8469b889a1",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "triggers": {
+    "crons": ["*/5 * * * *"]
+  }
+}

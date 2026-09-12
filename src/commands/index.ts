@@ -1,0 +1,38 @@
+import { clearCommand } from "./clear";
+import { colorCommand } from "./color";
+import { counterCommand, farewellCommand, welcomeCommand } from "./config";
+import { cryptoCommand } from "./crypto";
+import { distanceCommand } from "./distance";
+import { helpCommand } from "./help";
+import { infoCommand } from "./info";
+import { nickallCommand } from "./nickall";
+import { pingCommand } from "./ping";
+import { reactionroleCommand } from "./reactionrole";
+import { commandMap, commands, registerCommand } from "./registry";
+import { serverCommand } from "./server";
+import { statsCommand } from "./stats";
+import { steamCommand } from "./steam";
+import { steamgameCommand } from "./steamgame";
+import { weatherCommand } from "./weather";
+import { ytinfoCommand } from "./ytinfo";
+
+registerCommand(helpCommand);
+registerCommand(pingCommand);
+registerCommand(clearCommand);
+registerCommand(colorCommand);
+registerCommand(infoCommand);
+registerCommand(serverCommand);
+registerCommand(statsCommand);
+registerCommand(weatherCommand);
+registerCommand(cryptoCommand);
+registerCommand(distanceCommand);
+registerCommand(ytinfoCommand);
+registerCommand(welcomeCommand);
+registerCommand(farewellCommand);
+registerCommand(counterCommand);
+registerCommand(nickallCommand);
+registerCommand(steamCommand);
+registerCommand(steamgameCommand);
+registerCommand(reactionroleCommand);
+
+export { commandMap, commands };
