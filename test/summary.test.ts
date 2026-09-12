@@ -7,6 +7,7 @@ import {
   buildSummaryEmbed,
   chunkTranscript,
   createSummarizer,
+  getSummaryStatus,
   runSummaryPoll,
   type SummaryDeps,
 } from "../src/summary";
@@ -224,5 +225,48 @@ describe("runSummaryPoll", () => {
 
     expect(posted).toHaveLength(1);
     expect(summarize).toHaveBeenCalledTimes(3);
+  });
+});
+
+describe("getSummaryStatus", () => {
+  it("counts human messages after the pointer", async () => {
+    await addSummaryChannel(env.DB, "guild", "channel", 10, "100");
+    const { rest } = createRest([
+      { id: "101", content: "first" },
+      { id: "102", content: "bot message", bot: true },
+      { id: "103", content: "second" },
+    ]);
+    const row = await getSummaryChannel(env.DB, "guild", "channel");
+    if (!row) throw new Error("missing config");
+
+    const status = await getSummaryStatus(rest, row);
+    expect(status).toEqual({ counted: 2, ready: false });
+  });
+
+  it("caps the count and reports ready at the threshold", async () => {
+    await addSummaryChannel(env.DB, "guild", "channel", 2, "0");
+    const { rest } = createRest([
+      { id: "1", content: "a" },
+      { id: "2", content: "b" },
+      { id: "3", content: "c" },
+    ]);
+    const row = await getSummaryChannel(env.DB, "guild", "channel");
+    if (!row) throw new Error("missing config");
+
+    const status = await getSummaryStatus(rest, row);
+    expect(status).toEqual({ counted: 2, ready: true });
+  });
+
+  it("propagates REST errors", async () => {
+    await addSummaryChannel(env.DB, "guild", "channel", 2, "0");
+    const rest = {
+      get: vi.fn(async () => {
+        throw Object.assign(new Error("Missing Access"), { status: 403 });
+      }),
+    } as unknown as REST;
+    const row = await getSummaryChannel(env.DB, "guild", "channel");
+    if (!row) throw new Error("missing config");
+
+    await expect(getSummaryStatus(rest, row)).rejects.toThrow("Missing Access");
   });
 });

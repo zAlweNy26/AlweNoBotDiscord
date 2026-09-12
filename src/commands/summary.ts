@@ -13,6 +13,7 @@ import {
   removeSummaryChannel,
 } from "../db";
 import { ephemeralEmbed, ephemeralError, SUCCESS_COLOR } from "../respond";
+import { getSummaryStatus } from "../summary";
 import type { Command } from "./types";
 
 const MIN_THRESHOLD = 10;
@@ -80,6 +81,11 @@ const data = new SlashCommandBuilder()
   )
   .addSubcommand((subcommand) =>
     subcommand.setName("list").setDescription("List summarized channels"),
+  )
+  .addSubcommand((subcommand) =>
+    subcommand
+      .setName("status")
+      .setDescription("Show how close each channel is to its next summary"),
   );
 
 export const summaryCommand: Command = {
@@ -162,6 +168,35 @@ export const summaryCommand: Command = {
           description: rows
             .map((row) => `<#${row.channelId}> — every ${row.threshold} messages`)
             .join("\n"),
+        });
+      }
+      case "status": {
+        const rows = await listSummaryChannelsForGuild(env.DB, guildId);
+        if (rows.length === 0) {
+          return ephemeralEmbed({
+            color: SUCCESS_COLOR,
+            description: "No summarization configured.",
+          });
+        }
+        const lines = await Promise.all(
+          rows.map(async (row) => {
+            try {
+              const status = await getSummaryStatus(rest, row);
+              const progress = `${status.counted} / ${row.threshold} messages`;
+              if (status.ready) {
+                return `<#${row.channelId}> — ${progress} · ready`;
+              }
+              return `<#${row.channelId}> — ${progress} · ${row.threshold - status.counted} to go`;
+            } catch (error) {
+              console.error(`Failed to read status for channel ${row.channelId}`, error);
+              return `<#${row.channelId}> — couldn't read channel`;
+            }
+          }),
+        );
+        return ephemeralEmbed({
+          color: SUCCESS_COLOR,
+          title: "📝 Summary status",
+          description: lines.join("\n"),
         });
       }
       default:

@@ -123,6 +123,28 @@ async function fetchHumans(
   return { humans, scanned, exhausted };
 }
 
+export interface SummaryStatus {
+  counted: number;
+  ready: boolean;
+}
+
+export async function getSummaryStatus(
+  rest: REST,
+  channel: SummaryChannel,
+): Promise<SummaryStatus> {
+  const result = await fetchHumans(
+    rest,
+    channel.channelId,
+    channel.lastMessageId,
+    channel.threshold,
+    SCAN_LIMIT,
+  );
+  return {
+    counted: Math.min(result.humans.length, channel.threshold),
+    ready: result.humans.length >= channel.threshold,
+  };
+}
+
 export function chunkTranscript(lines: string[], maxChars = CHUNK_CHARS): string[][] {
   const chunks: string[][] = [];
   let current: string[] = [];
