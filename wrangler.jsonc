@@ -4,9 +4,6 @@
   "main": "src/index.ts",
   "compatibility_date": "2026-08-22",
   "compatibility_flags": ["nodejs_compat"],
-  "observability": {
-    "enabled": true
-  },
   "vars": {
     "DISCORD_APPLICATION_ID": "389455294025039872",
     "DISCORD_PUBLIC_KEY": "9a3cfc4c5c656530192f622f69118a8f8ff65dae6d4d6a773c4bde48eba70c46",
@@ -50,5 +47,18 @@
     }
   ],
   "workers_dev": false,
-  "preview_urls": false
+  "preview_urls": false,
+  "observability": {
+    "logs": {
+      "enabled": true,
+      "head_sampling_rate": 1,
+      "invocation_logs": true,
+      "persist": true
+    },
+    "traces": {
+      "enabled": false,
+      "head_sampling_rate": 1,
+      "persist": true
+    }
+  }
 }
