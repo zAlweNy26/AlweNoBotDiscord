@@ -6,7 +6,7 @@ import {
   DEFAULT_WELCOME_MESSAGE,
   getGuildSettings,
 } from "../db";
-import { runSummaryPoll } from "../summary";
+import { createSummarizer, runSummaryPoll } from "../summary";
 import { fillMessage } from "./messages";
 
 const GATEWAY_URL = "wss://gateway.discord.gg";
@@ -87,7 +87,10 @@ export class GatewayDO {
       }
       this.summaryPollRunning = true;
       try {
-        const result = await runSummaryPoll(this.env, { rest: this.rest, ai: this.env.AI });
+        const result = await runSummaryPoll(this.env, {
+          rest: this.rest,
+          summarize: createSummarizer(this.env.AI),
+        });
         return Response.json(result);
       } finally {
         this.summaryPollRunning = false;

@@ -6,6 +6,7 @@ import { addSummaryChannel, getSummaryChannel, updateSummaryProgress } from "../
 import {
   buildSummaryEmbed,
   chunkTranscript,
+  createSummarizer,
   runSummaryPoll,
   type SummaryDeps,
 } from "../src/summary";
@@ -51,14 +52,12 @@ function createRest(messages: FakeMessage[]) {
   return { rest, posted };
 }
 
-function createAi(reply = "riassunto") {
-  return {
-    run: vi.fn(async () => ({ response: reply })),
-  };
+function createSummarize(reply = "riassunto") {
+  return vi.fn(async (_system: string, _user: string) => reply);
 }
 
-function deps(rest: REST, ai: ReturnType<typeof createAi>): SummaryDeps {
-  return { rest, ai: ai as unknown as Env["AI"] };
+function deps(rest: REST, summarize: SummaryDeps["summarize"]): SummaryDeps {
+  return { rest, summarize };
 }
 
 beforeEach(async () => {
@@ -89,11 +88,23 @@ describe("buildSummaryEmbed", () => {
   });
 });
 
+describe("createSummarizer", () => {
+  it("reads the OpenAI-compatible response returned by the binding", async () => {
+    const run = vi.fn(async () => ({
+      choices: [{ message: { role: "assistant", content: "ciao" } }],
+    }));
+    const summarize = createSummarizer({ run } as unknown as Env["AI"]);
+
+    await expect(summarize("system", "user")).resolves.toBe("ciao");
+    expect(run).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe("runSummaryPoll", () => {
   it("does nothing when the threshold is not reached", async () => {
     await addSummaryChannel(env.DB, "guild", "channel", 2, "0");
     const { rest, posted } = createRest([{ id: "100", content: "hello" }]);
-    const result = await runSummaryPoll(env as unknown as Env, deps(rest, createAi()));
+    const result = await runSummaryPoll(env as unknown as Env, deps(rest, createSummarize()));
 
     expect(result.processed).toBe(0);
     expect(posted).toHaveLength(0);
@@ -109,7 +120,7 @@ describe("runSummaryPoll", () => {
       { id: "103", content: "   " },
       { id: "104", content: "second" },
     ]);
-    await runSummaryPoll(env as unknown as Env, deps(rest, createAi()));
+    await runSummaryPoll(env as unknown as Env, deps(rest, createSummarize()));
 
     expect(posted).toHaveLength(1);
     expect((await getSummaryChannel(env.DB, "guild", "channel"))?.lastMessageId).toBe("104");
@@ -122,7 +133,7 @@ describe("runSummaryPoll", () => {
       { id: "101", content: "second" },
       { id: "102", content: "third" },
     ]);
-    const result = await runSummaryPoll(env as unknown as Env, deps(rest, createAi()));
+    const result = await runSummaryPoll(env as unknown as Env, deps(rest, createSummarize()));
 
     expect(result.processed).toBe(1);
     expect(posted).toHaveLength(1);
@@ -137,7 +148,7 @@ describe("runSummaryPoll", () => {
       content: `message ${index}`,
     }));
     const { rest, posted } = createRest(messages);
-    const result = await runSummaryPoll(env as unknown as Env, deps(rest, createAi()));
+    const result = await runSummaryPoll(env as unknown as Env, deps(rest, createSummarize()));
 
     expect(result.processed).toBe(3);
     expect(posted).toHaveLength(3);
@@ -150,8 +161,10 @@ describe("runSummaryPoll", () => {
       { id: "100", content: "first" },
       { id: "101", content: "second" },
     ]);
-    const ai = { run: vi.fn(async () => Promise.reject(new Error("ai down"))) };
-    await runSummaryPoll(env as unknown as Env, deps(rest, ai));
+    const summarize = vi.fn(async () => {
+      throw new Error("ai down");
+    });
+    await runSummaryPoll(env as unknown as Env, deps(rest, summarize));
 
     expect(posted).toHaveLength(0);
     const row = await getSummaryChannel(env.DB, "guild", "channel");
@@ -166,8 +179,10 @@ describe("runSummaryPoll", () => {
       { id: "100", content: "first" },
       { id: "101", content: "second" },
     ]);
-    const ai = { run: vi.fn(async () => Promise.reject(new Error("ai down"))) };
-    await runSummaryPoll(env as unknown as Env, deps(rest, ai));
+    const summarize = vi.fn(async () => {
+      throw new Error("ai down");
+    });
+    await runSummaryPoll(env as unknown as Env, deps(rest, summarize));
 
     expect(posted).toHaveLength(0);
     const row = await getSummaryChannel(env.DB, "guild", "channel");
@@ -181,7 +196,7 @@ describe("runSummaryPoll", () => {
       throw Object.assign(new Error("Unknown Channel"), { status: 404 });
     });
     const rest = { get, post: vi.fn() } as unknown as REST;
-    await runSummaryPoll(env as unknown as Env, deps(rest, createAi()));
+    await runSummaryPoll(env as unknown as Env, deps(rest, createSummarize()));
 
     expect(await getSummaryChannel(env.DB, "guild", "channel")).toBeNull();
   });
@@ -192,7 +207,7 @@ describe("runSummaryPoll", () => {
       throw Object.assign(new Error("Missing Access"), { status: 403 });
     });
     const rest = { get, post: vi.fn() } as unknown as REST;
-    await runSummaryPoll(env as unknown as Env, deps(rest, createAi()));
+    await runSummaryPoll(env as unknown as Env, deps(rest, createSummarize()));
 
     expect(await getSummaryChannel(env.DB, "guild", "channel")).not.toBeNull();
   });
@@ -204,10 +219,10 @@ describe("runSummaryPoll", () => {
       content: "x".repeat(10_000),
     }));
     const { rest, posted } = createRest(messages);
-    const ai = createAi();
-    await runSummaryPoll(env as unknown as Env, deps(rest, ai));
+    const summarize = createSummarize();
+    await runSummaryPoll(env as unknown as Env, deps(rest, summarize));
 
     expect(posted).toHaveLength(1);
-    expect(ai.run).toHaveBeenCalledTimes(3);
+    expect(summarize).toHaveBeenCalledTimes(3);
   });
 });

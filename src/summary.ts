@@ -1,5 +1,7 @@
 import type { REST } from "@discordjs/rest";
+import { generateText } from "ai";
 import { type APIEmbed, type APIMessage, Routes } from "discord-api-types/v10";
+import { createWorkersAI } from "workers-ai-provider";
 import {
   listSummaryChannels,
   removeSummaryChannel,
@@ -42,7 +44,7 @@ const TIME_FORMAT = new Intl.DateTimeFormat("it-IT", {
 
 export interface SummaryDeps {
   rest: REST;
-  ai: Env["AI"];
+  summarize: (system: string, user: string) => Promise<string>;
 }
 
 export interface TranscriptMessage {
@@ -158,36 +160,42 @@ export function buildSummaryEmbed(summary: string, messages: TranscriptMessage[]
   };
 }
 
-async function runAi(ai: Env["AI"], system: string, user: string): Promise<string> {
-  const result = (await ai.run(MODEL, {
-    messages: [
-      { role: "system", content: system },
-      { role: "user", content: user },
-    ],
-  })) as { response?: unknown };
-  const text = typeof result.response === "string" ? result.response.trim() : "";
-  if (text.length === 0) {
-    throw new Error("Workers AI returned an empty response");
-  }
-  return text;
+export function createSummarizer(ai: Env["AI"]): SummaryDeps["summarize"] {
+  const workersai = createWorkersAI({ binding: ai });
+  return async (system, user) => {
+    const { text } = await generateText({
+      model: workersai(MODEL),
+      maxRetries: 0,
+      instructions: system,
+      messages: [{ role: "user", content: user }],
+    });
+    const trimmed = text.trim();
+    if (trimmed.length === 0) {
+      throw new Error("Workers AI returned an empty response");
+    }
+    return trimmed;
+  };
 }
 
-async function summarizeWindow(ai: Env["AI"], messages: TranscriptMessage[]): Promise<string> {
+async function summarizeWindow(
+  summarize: SummaryDeps["summarize"],
+  messages: TranscriptMessage[],
+): Promise<string> {
   const lines = messages.map(
     (message) => `[${formatTime(message.timestamp)}] ${message.authorName}: ${message.content}`,
   );
   const chunks = chunkTranscript(lines);
   const single = chunks[0];
   if (chunks.length === 1 && single) {
-    return runAi(ai, FINAL_PROMPT, single.join("\n"));
+    return summarize(FINAL_PROMPT, single.join("\n"));
   }
 
   const partials: string[] = [];
   for (const chunk of chunks) {
-    partials.push(await runAi(ai, MAP_PROMPT, chunk.join("\n")));
+    partials.push(await summarize(MAP_PROMPT, chunk.join("\n")));
   }
   const merged = partials.map((partial, index) => `Parte ${index + 1}:\n${partial}`).join("\n\n");
-  return runAi(ai, MERGE_PROMPT, merged);
+  return summarize(MERGE_PROMPT, merged);
 }
 
 function statusOf(error: unknown): number | undefined {
@@ -296,7 +304,7 @@ async function processChannel(
     }
 
     try {
-      const summary = await summarizeWindow(deps.ai, windowMessages);
+      const summary = await summarizeWindow(deps.summarize, windowMessages);
       await deps.rest.post(Routes.channelMessages(channel.channelId), {
         body: { embeds: [buildSummaryEmbed(summary, windowMessages)] },
       });
