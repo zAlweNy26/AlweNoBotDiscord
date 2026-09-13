@@ -1,4 +1,4 @@
-import { REST, Routes } from "discord.js";
+import { type APIGuild, REST, Routes } from "discord.js";
 import {
   DEFAULT_COUNTER_FORMAT,
   DEFAULT_FAREWELL_MESSAGE,
@@ -27,10 +27,9 @@ const OP_HEARTBEAT_ACK = 11;
 const RECONNECT_DELAY_MS = 5_000;
 const COUNTER_DEBOUNCE_MS = 10 * 60 * 1_000;
 const DEFAULT_HEARTBEAT_INTERVAL_MS = 41_250;
-
 const SESSION_INVALID_CODES = [4004, 4010, 4011, 4012, 4013, 4014];
 
-export function toHttpUrl(url: string): string {
+export function toHttpUrl(url: string) {
   return url.replace(/^wss:/, "https:").replace(/^ws:/, "http:");
 }
 
@@ -41,18 +40,9 @@ interface GatewayMessage {
   d?: unknown;
 }
 
-interface ReadyData {
-  session_id: string;
-  resume_gateway_url?: string;
-}
-
 interface MemberEventData {
   guild_id: string;
   user: { id: string; username: string; bot?: boolean };
-}
-
-interface GuildWithCounts {
-  approximate_member_count?: number;
 }
 
 export class GatewayDO {
@@ -74,7 +64,7 @@ export class GatewayDO {
     this.rest = new REST({ version: "10" }).setToken(env.DISCORD_TOKEN);
   }
 
-  async fetch(request: Request): Promise<Response> {
+  async fetch(request: Request) {
     const url = new URL(request.url);
     if (url.pathname === "/ensure") {
       await this.ensureConnected();
@@ -99,7 +89,7 @@ export class GatewayDO {
     return new Response("Not Found", { status: 404 });
   }
 
-  async alarm(): Promise<void> {
+  async alarm() {
     if (this.awaitingAck) {
       await this.reconnect();
       return;
@@ -113,11 +103,11 @@ export class GatewayDO {
     await this.ensureConnected();
   }
 
-  private isOpen(): boolean {
+  private isOpen() {
     return this.socket !== null && this.socket.readyState === WebSocket.OPEN;
   }
 
-  private async ensureConnected(): Promise<void> {
+  private async ensureConnected() {
     if (
       this.socket &&
       (this.socket.readyState === WebSocket.OPEN || this.socket.readyState === WebSocket.CONNECTING)
@@ -155,7 +145,7 @@ export class GatewayDO {
     }
   }
 
-  private async handleMessage(raw: unknown): Promise<void> {
+  private async handleMessage(raw: unknown) {
     let payload: GatewayMessage;
     try {
       payload = JSON.parse(
@@ -195,7 +185,7 @@ export class GatewayDO {
     }
   }
 
-  private async startConnection(): Promise<void> {
+  private async startConnection() {
     if (this.sessionId !== null && this.sequence !== null) {
       this.send({
         op: OP_RESUME,
@@ -219,10 +209,10 @@ export class GatewayDO {
     await this.scheduleAlarm(this.heartbeatInterval);
   }
 
-  private async handleDispatch(type: string, data: unknown): Promise<void> {
+  private async handleDispatch(type: string, data: unknown) {
     switch (type) {
       case "READY": {
-        const ready = data as ReadyData;
+        const ready = data as { session_id: string; resume_gateway_url?: string };
         this.sessionId = ready.session_id;
         if (ready.resume_gateway_url) {
           this.resumeBase = ready.resume_gateway_url;
@@ -244,7 +234,7 @@ export class GatewayDO {
     }
   }
 
-  private sendPresence(): void {
+  private sendPresence() {
     this.send({
       op: OP_PRESENCE_UPDATE,
       d: {
@@ -256,10 +246,7 @@ export class GatewayDO {
     });
   }
 
-  private async handleMemberEvent(
-    kind: "welcome" | "farewell",
-    event: MemberEventData,
-  ): Promise<void> {
+  private async handleMemberEvent(kind: "welcome" | "farewell", event: MemberEventData) {
     if (event.user.bot) return;
     try {
       const settings = await getGuildSettings(this.env.DB, event.guild_id);
@@ -291,15 +278,15 @@ export class GatewayDO {
     }
   }
 
-  private async fetchMemberCount(guildId: string): Promise<number | undefined> {
+  private async fetchMemberCount(guildId: string) {
     return (
       (await this.rest.get(Routes.guild(guildId), {
         query: new URLSearchParams({ with_counts: "true" }),
-      })) as GuildWithCounts
+      })) as APIGuild & { approximate_member_count?: number }
     ).approximate_member_count;
   }
 
-  private async updateCounter(channelId: string, name: string): Promise<void> {
+  private async updateCounter(channelId: string, name: string) {
     const key = `counter:${channelId}`;
     const last = await this.state.storage.get<number>(key);
     const now = Date.now();
@@ -310,17 +297,17 @@ export class GatewayDO {
     await this.rest.patch(Routes.channel(channelId), { body: { name: name.slice(0, 100) } });
   }
 
-  private send(payload: unknown): void {
+  private send(payload: unknown) {
     if (this.isOpen()) {
       this.socket?.send(JSON.stringify(payload));
     }
   }
 
-  private async scheduleAlarm(delayMs: number): Promise<void> {
+  private async scheduleAlarm(delayMs: number) {
     await this.state.storage.setAlarm(Date.now() + delayMs);
   }
 
-  private async loadState(): Promise<void> {
+  private async loadState() {
     if (this.stateLoaded) return;
     this.stateLoaded = true;
     this.sessionId = (await this.state.storage.get<string>("sessionId")) ?? null;
@@ -328,13 +315,13 @@ export class GatewayDO {
     this.resumeBase = (await this.state.storage.get<string>("resumeBase")) ?? GATEWAY_URL;
   }
 
-  private async resetSession(): Promise<void> {
+  private async resetSession() {
     this.sessionId = null;
     this.sequence = null;
     await this.state.storage.delete(["sessionId", "sequence"]);
   }
 
-  private async handleClose(code: number): Promise<void> {
+  private async handleClose(code: number) {
     this.socket = null;
     this.awaitingAck = false;
     if (SESSION_INVALID_CODES.includes(code)) {
@@ -343,7 +330,7 @@ export class GatewayDO {
     await this.scheduleAlarm(RECONNECT_DELAY_MS);
   }
 
-  private async reconnect(): Promise<void> {
+  private async reconnect() {
     const socket = this.socket;
     this.socket = null;
     try {

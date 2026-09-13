@@ -1,7 +1,6 @@
 import {
   type APIChatInputApplicationCommandInteraction,
   type APIInteraction,
-  type APIInteractionResponse,
   type APIMessageComponentInteraction,
   InteractionResponseType,
   InteractionType,
@@ -11,16 +10,14 @@ import { commandMap } from "./commands";
 import { handleRoleButton } from "./commands/reactionrole";
 import { ephemeralError } from "./respond";
 
-export interface RouterContext {
-  env: Env;
-  rest: REST;
-  waitUntil: (promise: Promise<unknown>) => void;
-}
-
 export async function routeInteraction(
   interaction: APIInteraction,
-  context: RouterContext,
-): Promise<APIInteractionResponse> {
+  context: {
+    env: Env;
+    rest: REST;
+    waitUntil: (promise: Promise<unknown>) => void;
+  },
+) {
   switch (interaction.type) {
     case InteractionType.Ping:
       return { type: InteractionResponseType.Pong };

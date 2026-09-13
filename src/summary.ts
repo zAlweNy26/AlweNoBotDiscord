@@ -1,5 +1,5 @@
 import { generateText } from "ai";
-import { type APIEmbed, type APIMessage, type REST, Routes } from "discord.js";
+import { type APIMessage, type REST, Routes } from "discord.js";
 import { createWorkersAI } from "workers-ai-provider";
 import {
   listSummaryChannels,
@@ -9,39 +9,12 @@ import {
 } from "./db";
 import { ERROR_COLOR } from "./respond";
 
-const MODEL = "@cf/zai-org/glm-4.7-flash";
-const SUMMARY_TITLE = "📝 Riepilogo";
-const SUMMARY_COLOR = 0x5865f2;
-const SUMMARY_CONTENT = "@here #summary";
-const MAX_WINDOWS_PER_POLL = 3;
 const MAX_FAILURES = 3;
+const MAX_WINDOWS_PER_POLL = 3;
 const PAGE_LIMIT = 100;
 const SCAN_LIMIT = 2_000;
 const CHUNK_CHARS = 100_000;
-
-const FINAL_PROMPT = [
-  "Sei un assistente che riassume conversazioni Discord.",
-  "Riassumi in italiano i messaggi che seguono, in modo conciso e fedele, senza inventare informazioni.",
-  "Usa al massimo 2000 caratteri. Rispondi solo con il riassunto.",
-].join(" ");
-
-const MAP_PROMPT = [
-  "Sei un assistente che riassume conversazioni Discord.",
-  "Riassumi in italiano questo estratto di conversazione, in modo conciso e fedele, senza inventare informazioni.",
-  "Rispondi solo con il riassunto.",
-].join(" ");
-
-const MERGE_PROMPT = [
-  "Sei un assistente che riassume conversazioni Discord.",
-  "Unisci i riassunti parziali che seguono in un unico riassunto in italiano, conciso e fedele, senza inventare informazioni.",
-  "Usa al massimo 2000 caratteri. Rispondi solo con il riassunto.",
-].join(" ");
-
-const TIME_FORMAT = new Intl.DateTimeFormat("it-IT", {
-  hour: "2-digit",
-  minute: "2-digit",
-  timeZone: "Europe/Rome",
-});
+const SUMMARY_COLOR = 0x5865f2;
 
 export interface SummaryDeps {
   rest: REST;
@@ -61,11 +34,11 @@ interface FetchResult {
   exhausted: boolean;
 }
 
-export function isHumanMessage(message: APIMessage): boolean {
+export function isHumanMessage(message: APIMessage) {
   return !message.author.bot && !message.webhook_id && message.content.trim().length > 0;
 }
 
-function toTranscriptMessage(message: APIMessage): TranscriptMessage {
+function toTranscriptMessage(message: APIMessage) {
   return {
     id: message.id,
     timestamp: message.timestamp,
@@ -74,8 +47,12 @@ function toTranscriptMessage(message: APIMessage): TranscriptMessage {
   };
 }
 
-function formatTime(timestamp: string): string {
-  return TIME_FORMAT.format(new Date(timestamp));
+function formatTime(timestamp: string) {
+  return new Intl.DateTimeFormat("it-IT", {
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "Europe/Rome",
+  }).format(new Date(timestamp));
 }
 
 async function fetchHumans(
@@ -84,7 +61,7 @@ async function fetchHumans(
   afterId: string,
   needed: number,
   budget: number,
-): Promise<FetchResult> {
+) {
   const humans: TranscriptMessage[] = [];
   let cursor = afterId;
   let scanned = 0;
@@ -138,7 +115,7 @@ export async function fetchRecentHumans(
   channelId: string,
   needed: number,
   budget = SCAN_LIMIT,
-): Promise<TranscriptMessage[]> {
+) {
   const humans: TranscriptMessage[] = [];
   let before: string | undefined;
   let scanned = 0;
@@ -171,7 +148,7 @@ export async function fetchRecentHumans(
   return humans.slice(-needed);
 }
 
-export function chunkTranscript(lines: string[], maxChars = CHUNK_CHARS): string[][] {
+export function chunkTranscript(lines: string[], maxChars = CHUNK_CHARS) {
   const chunks: string[][] = [];
   let current: string[] = [];
   let size = 0;
@@ -192,11 +169,11 @@ export function chunkTranscript(lines: string[], maxChars = CHUNK_CHARS): string
   return chunks;
 }
 
-export function buildSummaryEmbed(summary: string, messages: TranscriptMessage[]): APIEmbed {
+export function buildSummaryEmbed(summary: string, messages: TranscriptMessage[]) {
   const first = messages[0];
   const last = messages[messages.length - 1];
   return {
-    title: SUMMARY_TITLE,
+    title: "📝 Riepilogo",
     description: summary,
     color: SUMMARY_COLOR,
     footer: {
@@ -210,11 +187,11 @@ export function buildSummaryEmbed(summary: string, messages: TranscriptMessage[]
   };
 }
 
-export function createSummarizer(ai: Env["AI"]): SummaryDeps["summarize"] {
-  return async (system, user) => {
+export function createSummarizer(ai: Env["AI"]) {
+  return async (system: string, user: string) => {
     const trimmed = (
       await generateText({
-        model: createWorkersAI({ binding: ai })(MODEL),
+        model: createWorkersAI({ binding: ai })("@cf/zai-org/glm-4.7-flash"),
         maxRetries: 0,
         instructions: system,
         messages: [{ role: "user", content: user }],
@@ -230,7 +207,7 @@ export function createSummarizer(ai: Env["AI"]): SummaryDeps["summarize"] {
 export async function summarizeWindow(
   summarize: SummaryDeps["summarize"],
   messages: TranscriptMessage[],
-): Promise<string> {
+) {
   const chunks = chunkTranscript(
     messages.map(
       (message) => `[${formatTime(message.timestamp)}] ${message.authorName}: ${message.content}`,
@@ -238,20 +215,40 @@ export async function summarizeWindow(
   );
   const single = chunks[0];
   if (chunks.length === 1 && single) {
-    return summarize(FINAL_PROMPT, single.join("\n"));
+    return summarize(
+      [
+        "Sei un assistente che riassume conversazioni Discord.",
+        "Riassumi in italiano i messaggi che seguono, in modo conciso e fedele, senza inventare informazioni.",
+        "Usa al massimo 2000 caratteri. Rispondi solo con il riassunto.",
+      ].join(" "),
+      single.join("\n"),
+    );
   }
 
   const partials: string[] = [];
   for (const chunk of chunks) {
-    partials.push(await summarize(MAP_PROMPT, chunk.join("\n")));
+    partials.push(
+      await summarize(
+        [
+          "Sei un assistente che riassume conversazioni Discord.",
+          "Riassumi in italiano questo estratto di conversazione, in modo conciso e fedele, senza inventare informazioni.",
+          "Rispondi solo con il riassunto.",
+        ].join(" "),
+        chunk.join("\n"),
+      ),
+    );
   }
   return summarize(
-    MERGE_PROMPT,
+    [
+      "Sei un assistente che riassume conversazioni Discord.",
+      "Unisci i riassunti parziali che seguono in un unico riassunto in italiano, conciso e fedele, senza inventare informazioni.",
+      "Usa al massimo 2000 caratteri. Rispondi solo con il riassunto.",
+    ].join(" "),
     partials.map((partial, index) => `Parte ${index + 1}:\n${partial}`).join("\n\n"),
   );
 }
 
-function statusOf(error: unknown): number | undefined {
+function statusOf(error: unknown) {
   if (typeof error === "object" && error !== null && "status" in error) {
     const status = (error as { status?: unknown }).status;
     if (typeof status === "number") {
@@ -261,7 +258,7 @@ function statusOf(error: unknown): number | undefined {
   return undefined;
 }
 
-async function handleRestError(env: Env, channel: SummaryChannel, error: unknown): Promise<void> {
+async function handleRestError(env: Env, channel: SummaryChannel, error: unknown) {
   const status = statusOf(error);
   if (status === 404) {
     console.warn(`Channel ${channel.channelId} is gone, removing its summary config`);
@@ -280,7 +277,7 @@ async function handleWindowFailure(
   channel: SummaryChannel,
   lastMessageId: string,
   error: unknown,
-): Promise<void> {
+) {
   const status = statusOf(error);
   if (status === 404) {
     console.warn(`Channel ${channel.channelId} is gone, removing its summary config`);
@@ -313,11 +310,7 @@ async function handleWindowFailure(
   });
 }
 
-async function processChannel(
-  env: Env,
-  deps: SummaryDeps,
-  channel: SummaryChannel,
-): Promise<number> {
+async function processChannel(env: Env, deps: SummaryDeps, channel: SummaryChannel) {
   const buffer: TranscriptMessage[] = [];
   let cursor = channel.lastMessageId;
   let scanned = 0;
@@ -359,7 +352,7 @@ async function processChannel(
     try {
       await deps.rest.post(Routes.channelMessages(channel.channelId), {
         body: {
-          content: SUMMARY_CONTENT,
+          content: "@here #summary",
           embeds: [
             buildSummaryEmbed(
               await summarizeWindow(deps.summarize, windowMessages),
@@ -404,20 +397,11 @@ export interface ManualSummaryMessage {
   token: string;
 }
 
-export interface ManualSummaryBody {
-  content?: string;
-  embeds?: APIEmbed[];
-}
-
 export interface ManualSummaryDeps extends SummaryDeps {
   applicationId: string;
 }
 
-export async function runManualSummary(
-  deps: SummaryDeps,
-  channelId: string,
-  needed: number,
-): Promise<ManualSummaryBody> {
+export async function runManualSummary(deps: SummaryDeps, channelId: string, needed: number) {
   try {
     const messages = await fetchRecentHumans(deps.rest, channelId, needed);
     if (messages.length === 0) {
@@ -440,10 +424,7 @@ export async function runManualSummary(
   }
 }
 
-export async function deliverManualSummary(
-  deps: ManualSummaryDeps,
-  message: ManualSummaryMessage,
-): Promise<void> {
+export async function deliverManualSummary(deps: ManualSummaryDeps, message: ManualSummaryMessage) {
   const body = await runManualSummary(deps, message.channelId, message.needed);
   await deps.rest.patch(Routes.webhookMessage(deps.applicationId, message.token, "@original"), {
     body,

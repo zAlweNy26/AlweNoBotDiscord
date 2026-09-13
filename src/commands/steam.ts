@@ -49,15 +49,15 @@ interface PlayerLevelResponse {
   response: { player_level?: number };
 }
 
-function isSteamKeyError(error: unknown): boolean {
+function isSteamKeyError(error: unknown) {
   return error instanceof Error && (error.message.includes("403") || error.message.includes("401"));
 }
 
-function formatHours(minutes: number): string {
+function formatHours(minutes: number) {
   return `${(minutes / 60).toFixed(1)} ore`;
 }
 
-async function steamGet<T>(path: string, key: string): Promise<T> {
+async function steamGet<T>(path: string, key: string) {
   return fetchJson<T>(`${API_BASE}${path}${path.includes("?") ? "&" : "?"}key=${key}`);
 }
 

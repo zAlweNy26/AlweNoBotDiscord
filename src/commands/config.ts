@@ -15,21 +15,7 @@ import {
 import { embedResponse, ephemeralEmbed, ephemeralError, SUCCESS_COLOR } from "../respond";
 import type { Command } from "./types";
 
-interface ConfigSpec {
-  name: "welcome" | "farewell" | "counter";
-  description: string;
-  label: string;
-  enabledField: "welcomeEnabled" | "farewellEnabled" | "counterEnabled";
-  channelField: "welcomeChannelId" | "farewellChannelId" | "counterChannelId";
-  textField: "welcomeMessage" | "farewellMessage" | "counterFormat";
-  textOptionName: "messaggio" | "formato";
-  textDescription: string;
-  defaultText: string;
-}
-
-function getSubcommand(
-  interaction: Parameters<Command["execute"]>[0]["interaction"],
-): APIApplicationCommandInteractionDataSubcommandOption | undefined {
+function getSubcommand(interaction: Parameters<Command["execute"]>[0]["interaction"]) {
   return interaction.data.options?.[0]?.type === ApplicationCommandOptionType.Subcommand
     ? interaction.data.options?.[0]
     : undefined;
@@ -39,7 +25,7 @@ function getSubOption(
   subcommand: APIApplicationCommandInteractionDataSubcommandOption,
   name: string,
   type: ApplicationCommandOptionType,
-): string | number | undefined {
+) {
   const option = subcommand.options?.find(
     (candidate) => candidate.name === name && candidate.type === type,
   );
@@ -49,7 +35,17 @@ function getSubOption(
     : undefined;
 }
 
-function buildConfigCommand(spec: ConfigSpec): Command {
+function buildConfigCommand(spec: {
+  name: "welcome" | "farewell" | "counter";
+  description: string;
+  label: string;
+  enabledField: "welcomeEnabled" | "farewellEnabled" | "counterEnabled";
+  channelField: "welcomeChannelId" | "farewellChannelId" | "counterChannelId";
+  textField: "welcomeMessage" | "farewellMessage" | "counterFormat";
+  textOptionName: "messaggio" | "formato";
+  textDescription: string;
+  defaultText: string;
+}) {
   const data = new SlashCommandBuilder()
     .setName(spec.name)
     .setDescription(spec.description)
@@ -157,7 +153,7 @@ function buildConfigCommand(spec: ConfigSpec): Command {
         description: `✅ Configurazione di ${spec.label} aggiornata.`,
       });
     },
-  };
+  } satisfies Command;
 }
 
 export const welcomeCommand = buildConfigCommand({

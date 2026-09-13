@@ -1,4 +1,4 @@
-import { type APIEmbed, type APIEmbedField, SlashCommandBuilder } from "discord.js";
+import { type APIEmbedField, SlashCommandBuilder } from "discord.js";
 import { fetchJson } from "../lib/http";
 import { ERROR_COLOR, SUCCESS_COLOR } from "../respond";
 import { runDeferred } from "./deferred";
@@ -47,19 +47,9 @@ interface SteamSpyResponse {
   average_forever?: number;
 }
 
-const TYPE_COLORS: Record<string, number> = {
-  game: 0x95e318,
-  dlc: 0xa555b1,
-  mod: 0xe1b21e,
-};
+const TYPE_COLORS: Record<string, number> = { game: 0x95e318, dlc: 0xa555b1, mod: 0xe1b21e };
 
-const TYPE_LABELS: Record<string, string> = {
-  game: "Gioco",
-  dlc: "DLC",
-  mod: "Mod",
-};
-
-function formatPrice(data: NonNullable<AppDetailsEntry["data"]>): string {
+function formatPrice(data: NonNullable<AppDetailsEntry["data"]>) {
   if (data.is_free) return "Gratis";
   const price = data.price_overview;
   if (!price) return "n/d";
@@ -70,12 +60,12 @@ function formatPrice(data: NonNullable<AppDetailsEntry["data"]>): string {
   return price.discount_percent > 0 ? `${value} (-${price.discount_percent}%)` : value;
 }
 
-function formatPlaytime(minutes: number | undefined): string {
+function formatPlaytime(minutes: number | undefined) {
   if (!minutes) return "n/d";
   return `${Math.round(minutes / 60)} ore`;
 }
 
-function error(description: string): { embeds: APIEmbed[] } {
+function error(description: string) {
   return { embeds: [{ color: ERROR_COLOR, description }] };
 }
 
@@ -130,7 +120,13 @@ export const steamgameCommand: Command = {
       }
 
       const fields: APIEmbedField[] = [];
-      fields.push({ name: "Tipo", value: TYPE_LABELS[data.type] ?? data.type, inline: true });
+      fields.push({
+        name: "Tipo",
+        value:
+          ({ game: "Gioco", dlc: "DLC", mod: "Mod" } as Record<string, string>)[data.type] ??
+          data.type,
+        inline: true,
+      });
       fields.push({
         name: "Età minima",
         value: data.required_age > 0 ? `${data.required_age}+` : "Per tutti",

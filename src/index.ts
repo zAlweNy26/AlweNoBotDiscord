@@ -12,11 +12,7 @@ import { verifyDiscordSignature } from "./verify";
 
 export { GatewayDO };
 
-async function handleInteractions(
-  request: Request,
-  env: Env,
-  ctx: ExecutionContext,
-): Promise<Response> {
+async function handleInteractions(request: Request, env: Env, ctx: ExecutionContext) {
   const body = await request.text();
   if (
     !(await verifyDiscordSignature({
@@ -53,7 +49,7 @@ async function handleInteractions(
 export async function handleManualSummaryBatch(
   batch: MessageBatch<ManualSummaryMessage>,
   deps: ManualSummaryDeps,
-): Promise<void> {
+) {
   for (const message of batch.messages) {
     try {
       await deliverManualSummary(deps, message.body);
@@ -66,7 +62,7 @@ export async function handleManualSummaryBatch(
 }
 
 export default {
-  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+  async fetch(request: Request, env: Env, ctx: ExecutionContext) {
     const { pathname } = new URL(request.url);
     if (pathname === "/health") {
       return new Response("ok");
@@ -77,13 +73,13 @@ export default {
     return new Response("Not Found", { status: 404 });
   },
 
-  async scheduled(_controller: ScheduledController, env: Env): Promise<void> {
+  async scheduled(_controller: ScheduledController, env: Env) {
     const stub = env.GATEWAY.get(env.GATEWAY.idFromName("main"));
     await stub.fetch("https://gateway.internal/ensure");
     await stub.fetch("https://gateway.internal/summary-poll");
   },
 
-  async queue(batch: MessageBatch<ManualSummaryMessage>, env: Env): Promise<void> {
+  async queue(batch: MessageBatch<ManualSummaryMessage>, env: Env) {
     await handleManualSummaryBatch(batch, {
       rest: new REST({ version: "10" }).setToken(env.DISCORD_TOKEN),
       summarize: createSummarizer(env.AI),

@@ -1,9 +1,8 @@
-export interface MessageMember {
-  id: string;
-  username: string;
-}
-
-export function fillMessage(template: string, member: MessageMember, memberCount?: number): string {
+export function fillMessage(
+  template: string,
+  member: { id: string; username: string },
+  memberCount?: number,
+) {
   let result = template
     .replaceAll("{{utente}}", `<@${member.id}>`)
     .replaceAll("{{username}}", member.username);

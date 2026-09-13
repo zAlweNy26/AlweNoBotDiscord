@@ -246,6 +246,6 @@ const isoCountries: Record<string, string> = {
   ZW: "Zimbabwe",
 };
 
-export function getCountryName(countryCode: string): string {
+export function getCountryName(countryCode: string) {
   return isoCountries[countryCode.toUpperCase()] ?? countryCode;
 }

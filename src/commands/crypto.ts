@@ -16,7 +16,7 @@ interface CoinGeckoMarket {
   low_24h: number;
 }
 
-function formatEuro(value: number | null): string {
+function formatEuro(value: number | null) {
   if (value === null) return "n/d";
   return new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR" }).format(value);
 }

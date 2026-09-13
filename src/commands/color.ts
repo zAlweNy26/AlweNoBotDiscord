@@ -7,7 +7,7 @@ import type { Command } from "./types";
 type Format = "hex" | "rgb" | "hsl" | "hsv" | "xyz" | "hcg";
 type Rgb = [number, number, number];
 
-function parseValues(raw: string): Rgb | null {
+function parseValues(raw: string) {
   const values = raw
     .trim()
     .split(/[\s,]+/)
@@ -19,7 +19,7 @@ function parseValues(raw: string): Rgb | null {
   return values as Rgb;
 }
 
-function toRgb(format: Format, raw: string): Rgb | null {
+function toRgb(format: Format, raw: string) {
   if (format === "hex") {
     const hex = raw.replace(/^#/, "");
     if (!/^[0-9a-f]{3}$|^[0-9a-f]{6}$/i.test(hex)) {
@@ -44,7 +44,7 @@ function toRgb(format: Format, raw: string): Rgb | null {
   switch (format) {
     case "rgb":
       if (values.some((value) => value < 0 || value > 255)) return null;
-      return [Math.round(a), Math.round(b), Math.round(c)];
+      return [Math.round(a), Math.round(b), Math.round(c)] satisfies Rgb;
     case "hsl":
       if (a < 0 || a > 360 || b < 0 || b > 100 || c < 0 || c > 100) return null;
       return convert.hsl.rgb([a, b, c]) as Rgb;

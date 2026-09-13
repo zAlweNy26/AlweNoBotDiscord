@@ -15,25 +15,28 @@ export function messageResponse(
       { type: InteractionResponseType.ChannelMessageWithSource }
     >["data"]
   >,
-): APIInteractionResponse {
-  return { type: InteractionResponseType.ChannelMessageWithSource, data };
+) {
+  return {
+    type: InteractionResponseType.ChannelMessageWithSource,
+    data,
+  } satisfies APIInteractionResponse;
 }
 
-export function embedResponse(embed: APIEmbed): APIInteractionResponse {
+export function embedResponse(embed: APIEmbed) {
   return messageResponse({ embeds: [embed] });
 }
 
-export function ephemeralEmbed(embed: APIEmbed): APIInteractionResponse {
+export function ephemeralEmbed(embed: APIEmbed) {
   return messageResponse({ embeds: [embed], flags: MessageFlags.Ephemeral });
 }
 
-export function ephemeralError(description: string): APIInteractionResponse {
+export function ephemeralError(description: string) {
   return ephemeralEmbed({ color: ERROR_COLOR, description });
 }
 
-export function deferredResponse(ephemeral = false): APIInteractionResponse {
+export function deferredResponse(ephemeral = false) {
   return {
     type: InteractionResponseType.DeferredChannelMessageWithSource,
     data: ephemeral ? { flags: MessageFlags.Ephemeral } : undefined,
-  };
+  } satisfies APIInteractionResponse;
 }

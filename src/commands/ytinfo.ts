@@ -1,4 +1,4 @@
-import { type APIEmbed, type APIEmbedField, SlashCommandBuilder } from "discord.js";
+import { type APIEmbedField, SlashCommandBuilder } from "discord.js";
 import { getCountryName } from "../lib/countries";
 import { formatIsoTimestamp } from "../lib/format";
 import { fetchJson } from "../lib/http";
@@ -31,11 +31,11 @@ interface ChannelResponse {
   }[];
 }
 
-function error(description: string): { embeds: APIEmbed[] } {
+function error(description: string) {
   return { embeds: [{ color: ERROR_COLOR, description }] };
 }
 
-function apiError(cause: unknown): { embeds: APIEmbed[] } {
+function apiError(cause: unknown) {
   const message = cause instanceof Error ? cause.message : "";
   if (message.includes("400") || message.includes("403")) {
     return error("Chiave API di YouTube non valida o quota esaurita.");
@@ -43,7 +43,7 @@ function apiError(cause: unknown): { embeds: APIEmbed[] } {
   return error("Servizio momentaneamente non disponibile, riprova più tardi.");
 }
 
-function formatCount(value: string | undefined): string {
+function formatCount(value: string | undefined) {
   return Number(value ?? 0).toLocaleString("it-IT");
 }
 

@@ -13,11 +13,13 @@ const MONTHS = [
   "Dicembre",
 ] as const;
 
-function pad(value: number): string {
+const DISCORD_EPOCH = 1420070400000n;
+
+function pad(value: number) {
   return value.toString().padStart(2, "0");
 }
 
-export function formatDate(date: Date, withTime: boolean): string {
+export function formatDate(date: Date, withTime: boolean) {
   const day = pad(date.getDate());
   const month = MONTHS[date.getMonth()];
   const year = date.getFullYear();
@@ -25,16 +27,14 @@ export function formatDate(date: Date, withTime: boolean): string {
   return `${day} ${month} ${year} alle ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
 }
 
-export function formatIsoTimestamp(timestamp: string | number): string {
+export function formatIsoTimestamp(timestamp: string | number) {
   return formatDate(new Date(timestamp), true);
 }
 
-const DISCORD_EPOCH = 1420070400000n;
-
-export function snowflakeToDate(snowflake: string): Date {
+export function snowflakeToDate(snowflake: string) {
   return new Date(Number((BigInt(snowflake) >> 22n) + DISCORD_EPOCH));
 }
 
-export function formatUnixTimestamp(unixSeconds: number): string {
+export function formatUnixTimestamp(unixSeconds: number) {
   return formatDate(new Date(unixSeconds * 1000), true);
 }

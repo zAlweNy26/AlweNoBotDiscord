@@ -2,12 +2,10 @@ import { env } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
 import {
   addRoleButton,
-  deleteRoleButton,
   deleteRoleButtonsForMessage,
   ensureGuildSettings,
   getGuildSettings,
   getRoleButton,
-  listRoleButtons,
   updateGuildSettings,
 } from "../src/db";
 
@@ -83,7 +81,7 @@ describe("role buttons", () => {
     expect(button?.emoji).toBeNull();
   });
 
-  it("lists buttons for a guild and deletes them", async () => {
+  it("deletes every button of a message", async () => {
     await addRoleButton(env.DB, {
       messageId: MESSAGE_ID,
       roleId: "666666666666666666",
@@ -91,10 +89,8 @@ describe("role buttons", () => {
       label: "Annunci",
       emoji: null,
     });
-    expect((await listRoleButtons(env.DB, GUILD_ID)).length).toBeGreaterThanOrEqual(2);
-    await deleteRoleButton(env.DB, MESSAGE_ID, ROLE_ID);
-    expect(await getRoleButton(env.DB, MESSAGE_ID, ROLE_ID)).toBeNull();
     await deleteRoleButtonsForMessage(env.DB, MESSAGE_ID);
-    expect(await listRoleButtons(env.DB, GUILD_ID)).toEqual([]);
+    expect(await getRoleButton(env.DB, MESSAGE_ID, ROLE_ID)).toBeNull();
+    expect(await getRoleButton(env.DB, MESSAGE_ID, "666666666666666666")).toBeNull();
   });
 });

@@ -1,7 +1,6 @@
 import {
   ActionRowBuilder,
   type APIApplicationCommandInteractionDataSubcommandOption,
-  type APIInteractionResponse,
   type APIMessage,
   type APIMessageComponentInteraction,
   ApplicationCommandOptionType,
@@ -18,7 +17,7 @@ import type { Command } from "./types";
 
 const CUSTOM_ID_PREFIX = "role:";
 
-function messageIdFromInput(input: string): string | null {
+function messageIdFromInput(input: string) {
   return /(\d{17,20})/.exec(input.trim())?.[1] ?? null;
 }
 
@@ -26,7 +25,7 @@ function getSubOption(
   subcommand: APIApplicationCommandInteractionDataSubcommandOption,
   name: string,
   type: ApplicationCommandOptionType,
-): string | undefined {
+) {
   const option = subcommand.options?.find(
     (candidate) => candidate.name === name && candidate.type === type,
   );
@@ -37,7 +36,7 @@ function getSubOption(
 export async function handleRoleButton(
   context: { env: Env; rest: REST },
   interaction: APIMessageComponentInteraction,
-): Promise<APIInteractionResponse> {
+) {
   const customId = interaction.data.custom_id;
   if (!customId.startsWith(CUSTOM_ID_PREFIX)) {
     return ephemeralError("Pulsante non riconosciuto.");

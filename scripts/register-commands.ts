@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { REST, Routes } from "discord.js";
 import { commands } from "../src/commands";
 
-function loadDevVars(): Record<string, string> {
+function loadDevVars() {
   let content: string;
   try {
     content = readFileSync(".dev.vars", "utf8");

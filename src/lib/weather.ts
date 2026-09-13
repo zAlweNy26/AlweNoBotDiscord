@@ -29,6 +29,6 @@ const WEATHER_DESCRIPTIONS: Record<number, string> = {
   99: "Temporale con grandine intensa",
 };
 
-export function describeWeatherCode(code: number): string {
+export function describeWeatherCode(code: number) {
   return WEATHER_DESCRIPTIONS[code] ?? "Condizioni sconosciute";
 }

@@ -4,11 +4,6 @@ import { formatDate, snowflakeToDate } from "../lib/format";
 import { embedResponse, ephemeralError, SUCCESS_COLOR } from "../respond";
 import type { Command } from "./types";
 
-interface GuildWithCounts extends APIGuild {
-  approximate_member_count?: number;
-  approximate_presence_count?: number;
-}
-
 export const serverCommand: Command = {
   category: "Info",
   data: new SlashCommandBuilder()
@@ -20,7 +15,10 @@ export const serverCommand: Command = {
     }
     const guild = (await rest.get(Routes.guild(interaction.guild_id), {
       query: new URLSearchParams({ with_counts: "true" }),
-    })) as GuildWithCounts;
+    })) as APIGuild & {
+      approximate_member_count?: number;
+      approximate_presence_count?: number;
+    };
     const fields: APIEmbedField[] = [
       { name: "Proprietario", value: `<@${guild.owner_id}>`, inline: true },
       {

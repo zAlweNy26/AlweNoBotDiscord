@@ -1,6 +1,6 @@
 const MAX_TIMESTAMP_SKEW_MS = 5 * 60 * 1000;
 
-function hexToBytes(hex: string): Uint8Array | null {
+function hexToBytes(hex: string) {
   if (hex.length === 0 || hex.length % 2 !== 0) {
     return null;
   }
@@ -15,15 +15,13 @@ function hexToBytes(hex: string): Uint8Array | null {
   return bytes;
 }
 
-export interface SignatureVerificationInput {
+export async function verifyDiscordSignature(input: {
   publicKeyHex: string;
   signatureHex: string | null;
   timestamp: string | null;
   body: string;
   now?: number;
-}
-
-export async function verifyDiscordSignature(input: SignatureVerificationInput): Promise<boolean> {
+}) {
   const { signatureHex, timestamp } = input;
   if (!signatureHex || !timestamp) {
     return false;

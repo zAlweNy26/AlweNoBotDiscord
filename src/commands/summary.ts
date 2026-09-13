@@ -20,13 +20,11 @@ const MIN_THRESHOLD = 10;
 const MAX_THRESHOLD = 500;
 const DEFAULT_THRESHOLD = 100;
 
-function clamp(value: number, min: number, max: number): number {
+function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
 }
 
-function getSubcommand(
-  interaction: Parameters<Command["execute"]>[0]["interaction"],
-): APIApplicationCommandInteractionDataSubcommandOption | undefined {
+function getSubcommand(interaction: Parameters<Command["execute"]>[0]["interaction"]) {
   return interaction.data.options?.[0]?.type === ApplicationCommandOptionType.Subcommand
     ? interaction.data.options?.[0]
     : undefined;
@@ -36,7 +34,7 @@ function getSubOption(
   subcommand: APIApplicationCommandInteractionDataSubcommandOption,
   name: string,
   type: ApplicationCommandOptionType,
-): string | number | undefined {
+) {
   const option = subcommand.options?.find(
     (candidate) => candidate.name === name && candidate.type === type,
   );
@@ -46,67 +44,63 @@ function getSubOption(
     : undefined;
 }
 
-function getChannelId(
-  subcommand: APIApplicationCommandInteractionDataSubcommandOption,
-): string | undefined {
+function getChannelId(subcommand: APIApplicationCommandInteractionDataSubcommandOption) {
   const channelId = getSubOption(subcommand, "channel", ApplicationCommandOptionType.Channel);
   return typeof channelId === "string" ? channelId : undefined;
 }
 
-const data = new SlashCommandBuilder()
-  .setName("summary")
-  .setDescription("Configure automatic channel summaries")
-  .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
-  .addSubcommand((subcommand) =>
-    subcommand
-      .setName("add")
-      .setDescription("Start summarizing a channel")
-      .addChannelOption((option) =>
-        option.setName("channel").setDescription("Channel to summarize").setRequired(true),
-      )
-      .addIntegerOption((option) =>
-        option
-          .setName("threshold")
-          .setDescription(`Messages per summary (${MIN_THRESHOLD}-${MAX_THRESHOLD})`)
-          .setMinValue(MIN_THRESHOLD)
-          .setMaxValue(MAX_THRESHOLD),
-      ),
-  )
-  .addSubcommand((subcommand) =>
-    subcommand
-      .setName("remove")
-      .setDescription("Stop summarizing a channel")
-      .addChannelOption((option) =>
-        option.setName("channel").setDescription("Channel to stop summarizing").setRequired(true),
-      ),
-  )
-  .addSubcommand((subcommand) =>
-    subcommand.setName("list").setDescription("List summarized channels"),
-  )
-  .addSubcommand((subcommand) =>
-    subcommand
-      .setName("status")
-      .setDescription("Show how close each channel is to its next summary"),
-  )
-  .addSubcommand((subcommand) =>
-    subcommand
-      .setName("manual")
-      .setDescription("Summarize recent messages on demand")
-      .addIntegerOption((option) =>
-        option
-          .setName("messages")
-          .setDescription(
-            `How many recent messages to summarize (${MIN_THRESHOLD}-${MAX_THRESHOLD})`,
-          )
-          .setMinValue(MIN_THRESHOLD)
-          .setMaxValue(MAX_THRESHOLD)
-          .setRequired(true),
-      ),
-  );
-
 export const summaryCommand: Command = {
   category: "Info",
-  data,
+  data: new SlashCommandBuilder()
+    .setName("summary")
+    .setDescription("Configure automatic channel summaries")
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
+    .addSubcommand((subcommand) =>
+      subcommand
+        .setName("add")
+        .setDescription("Start summarizing a channel")
+        .addChannelOption((option) =>
+          option.setName("channel").setDescription("Channel to summarize").setRequired(true),
+        )
+        .addIntegerOption((option) =>
+          option
+            .setName("threshold")
+            .setDescription(`Messages per summary (${MIN_THRESHOLD}-${MAX_THRESHOLD})`)
+            .setMinValue(MIN_THRESHOLD)
+            .setMaxValue(MAX_THRESHOLD),
+        ),
+    )
+    .addSubcommand((subcommand) =>
+      subcommand
+        .setName("remove")
+        .setDescription("Stop summarizing a channel")
+        .addChannelOption((option) =>
+          option.setName("channel").setDescription("Channel to stop summarizing").setRequired(true),
+        ),
+    )
+    .addSubcommand((subcommand) =>
+      subcommand.setName("list").setDescription("List summarized channels"),
+    )
+    .addSubcommand((subcommand) =>
+      subcommand
+        .setName("status")
+        .setDescription("Show how close each channel is to its next summary"),
+    )
+    .addSubcommand((subcommand) =>
+      subcommand
+        .setName("manual")
+        .setDescription("Summarize recent messages on demand")
+        .addIntegerOption((option) =>
+          option
+            .setName("messages")
+            .setDescription(
+              `How many recent messages to summarize (${MIN_THRESHOLD}-${MAX_THRESHOLD})`,
+            )
+            .setMinValue(MIN_THRESHOLD)
+            .setMaxValue(MAX_THRESHOLD)
+            .setRequired(true),
+        ),
+    ),
   async execute(context) {
     const { env, rest, interaction } = context;
     const guildId = interaction.guild_id;

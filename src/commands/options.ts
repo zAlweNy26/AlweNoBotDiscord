@@ -9,24 +9,14 @@ function findOption(interaction: Interaction, name: string) {
   return interaction.data.options?.find((option) => option.name === name);
 }
 
-export function getStringOption(interaction: Interaction, name: string): string | undefined {
+export function getStringOption(interaction: Interaction, name: string) {
   const option = findOption(interaction, name);
   return option?.type === ApplicationCommandOptionType.String ? option.value : undefined;
 }
 
-export function getIntegerOption(interaction: Interaction, name: string): number | undefined {
+export function getIntegerOption(interaction: Interaction, name: string) {
   const option = findOption(interaction, name);
   return option?.type === ApplicationCommandOptionType.Integer ? option.value : undefined;
-}
-
-export function getChannelOption(interaction: Interaction, name: string): string | undefined {
-  const option = findOption(interaction, name);
-  return option?.type === ApplicationCommandOptionType.Channel ? option.value : undefined;
-}
-
-export function getRoleOption(interaction: Interaction, name: string): string | undefined {
-  const option = findOption(interaction, name);
-  return option?.type === ApplicationCommandOptionType.Role ? option.value : undefined;
 }
 
 export function getUserOption(interaction: Interaction, name: string) {

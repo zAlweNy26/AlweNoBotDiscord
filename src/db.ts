@@ -25,10 +25,7 @@ function orm(db: D1Database) {
   return drizzle(db);
 }
 
-export async function getGuildSettings(
-  db: D1Database,
-  guildId: string,
-): Promise<GuildSettings | null> {
+export async function getGuildSettings(db: D1Database, guildId: string) {
   return (
     (
       await orm(db).select().from(guildSettings).where(eq(guildSettings.guildId, guildId)).limit(1)
@@ -36,7 +33,7 @@ export async function getGuildSettings(
   );
 }
 
-export async function ensureGuildSettings(db: D1Database, guildId: string): Promise<GuildSettings> {
+export async function ensureGuildSettings(db: D1Database, guildId: string) {
   await orm(db).insert(guildSettings).values({ guildId }).onConflictDoNothing();
   const settings = await getGuildSettings(db, guildId);
   if (!settings) {
@@ -49,7 +46,7 @@ export async function updateGuildSettings(
   db: D1Database,
   guildId: string,
   patch: GuildSettingsPatch,
-): Promise<void> {
+) {
   const values: Record<string, string | boolean | null> = {};
   for (const [field, value] of Object.entries(patch)) {
     if (value !== undefined) {
@@ -75,14 +72,11 @@ export interface SummaryProgressPatch {
   failureCount?: number;
 }
 
-export async function listSummaryChannels(db: D1Database): Promise<SummaryChannel[]> {
+export async function listSummaryChannels(db: D1Database) {
   return orm(db).select().from(summaryChannels);
 }
 
-export async function listSummaryChannelsForGuild(
-  db: D1Database,
-  guildId: string,
-): Promise<SummaryChannel[]> {
+export async function listSummaryChannelsForGuild(db: D1Database, guildId: string) {
   return orm(db)
     .select()
     .from(summaryChannels)
@@ -90,11 +84,7 @@ export async function listSummaryChannelsForGuild(
     .orderBy(summaryChannels.channelId);
 }
 
-export async function getSummaryChannel(
-  db: D1Database,
-  guildId: string,
-  channelId: string,
-): Promise<SummaryChannel | null> {
+export async function getSummaryChannel(db: D1Database, guildId: string, channelId: string) {
   return (
     (
       await orm(db)
@@ -112,7 +102,7 @@ export async function addSummaryChannel(
   channelId: string,
   threshold: number,
   baselineMessageId: string,
-): Promise<void> {
+) {
   await orm(db)
     .insert(summaryChannels)
     .values({
@@ -129,11 +119,7 @@ export async function addSummaryChannel(
     });
 }
 
-export async function removeSummaryChannel(
-  db: D1Database,
-  guildId: string,
-  channelId: string,
-): Promise<void> {
+export async function removeSummaryChannel(db: D1Database, guildId: string, channelId: string) {
   await orm(db)
     .delete(summaryChannels)
     .where(and(eq(summaryChannels.guildId, guildId), eq(summaryChannels.channelId, channelId)));
@@ -144,7 +130,7 @@ export async function updateSummaryProgress(
   guildId: string,
   channelId: string,
   patch: SummaryProgressPatch,
-): Promise<void> {
+) {
   const values: SummaryProgressPatch = {};
   if (patch.lastMessageId !== undefined) values.lastMessageId = patch.lastMessageId;
   if (patch.failureCount !== undefined) values.failureCount = patch.failureCount;
@@ -163,7 +149,7 @@ export interface RoleButton {
   emoji: string | null;
 }
 
-export async function addRoleButton(db: D1Database, button: RoleButton): Promise<void> {
+export async function addRoleButton(db: D1Database, button: RoleButton) {
   await orm(db)
     .insert(roleButtons)
     .values(button)
@@ -173,11 +159,7 @@ export async function addRoleButton(db: D1Database, button: RoleButton): Promise
     });
 }
 
-export async function getRoleButton(
-  db: D1Database,
-  messageId: string,
-  roleId: string,
-): Promise<RoleButton | null> {
+export async function getRoleButton(db: D1Database, messageId: string, roleId: string) {
   return (
     (
       await orm(db)
@@ -189,27 +171,6 @@ export async function getRoleButton(
   );
 }
 
-export async function listRoleButtons(db: D1Database, guildId: string): Promise<RoleButton[]> {
-  return orm(db)
-    .select()
-    .from(roleButtons)
-    .where(eq(roleButtons.guildId, guildId))
-    .orderBy(roleButtons.messageId, roleButtons.roleId);
-}
-
-export async function deleteRoleButton(
-  db: D1Database,
-  messageId: string,
-  roleId: string,
-): Promise<void> {
-  await orm(db)
-    .delete(roleButtons)
-    .where(and(eq(roleButtons.messageId, messageId), eq(roleButtons.roleId, roleId)));
-}
-
-export async function deleteRoleButtonsForMessage(
-  db: D1Database,
-  messageId: string,
-): Promise<void> {
+export async function deleteRoleButtonsForMessage(db: D1Database, messageId: string) {
   await orm(db).delete(roleButtons).where(eq(roleButtons.messageId, messageId));
 }

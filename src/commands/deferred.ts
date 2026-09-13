@@ -1,4 +1,4 @@
-import { type APIEmbed, type APIInteractionResponse, Routes } from "discord.js";
+import { type APIEmbed, Routes } from "discord.js";
 import { deferredResponse, ERROR_COLOR } from "../respond";
 import type { CommandContext } from "./types";
 
@@ -7,10 +7,7 @@ export interface DeferredBody {
   embeds?: APIEmbed[];
 }
 
-export function runDeferred(
-  context: CommandContext,
-  work: () => Promise<DeferredBody>,
-): APIInteractionResponse {
+export function runDeferred(context: CommandContext, work: () => Promise<DeferredBody>) {
   context.waitUntil(
     (async () => {
       let body: DeferredBody;
