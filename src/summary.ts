@@ -1,4 +1,4 @@
-import { generateText } from "ai";
+import { APICallError, generateText } from "ai";
 import { type APIMessage, type REST, Routes } from "discord.js";
 import { createWorkersAI } from "workers-ai-provider";
 import {
@@ -10,6 +10,7 @@ import {
 import { ERROR_COLOR } from "./respond";
 
 const MAX_FAILURES = 3;
+const AI_MAX_FAILURES = 10;
 const MAX_WINDOWS_PER_POLL = 3;
 const PAGE_LIMIT = 100;
 const SCAN_LIMIT = 2_000;
@@ -224,7 +225,7 @@ export function createSummarizer(ai: Env["AI"]) {
     const trimmed = (
       await generateText({
         model: createWorkersAI({ binding: ai })("@cf/zai-org/glm-4.7-flash"),
-        maxRetries: 0,
+        maxRetries: 2,
         instructions: system,
         messages: [{ role: "user", content: user }],
       })
@@ -284,7 +285,7 @@ async function handleRestError(env: Env, channel: SummaryChannel, error: unknown
   console.error(`Failed to fetch messages for channel ${channel.channelId}`, error);
 }
 
-async function handleWindowFailure(
+async function handlePostFailure(
   env: Env,
   channel: SummaryChannel,
   lastMessageId: string,
@@ -315,6 +316,82 @@ async function handleWindowFailure(
   }
   console.error(
     `Summary window failed for channel ${channel.channelId} (attempt ${failures}/${MAX_FAILURES})`,
+    error,
+  );
+  await updateSummaryProgress(env.DB, channel.guildId, channel.channelId, {
+    failureCount: failures,
+  });
+}
+
+interface AiFailure {
+  transient: boolean;
+  code?: number;
+  statusCode?: number;
+}
+
+function workersAiErrorCodeOf(error: APICallError) {
+  const data = error.data;
+  if (typeof data === "object" && data !== null && "workersAIErrorCode" in data) {
+    const code = (data as { workersAIErrorCode?: unknown }).workersAIErrorCode;
+    if (typeof code === "number") {
+      return code;
+    }
+  }
+  return undefined;
+}
+
+function classifyAiFailure(error: unknown): AiFailure {
+  if (!APICallError.isInstance(error)) {
+    return { transient: false };
+  }
+  return {
+    transient: error.isRetryable,
+    code: workersAiErrorCodeOf(error),
+    statusCode: error.statusCode,
+  };
+}
+
+function aiFailureDetail(failure: AiFailure) {
+  const parts: string[] = [];
+  if (failure.code !== undefined) {
+    parts.push(`code ${failure.code}`);
+  }
+  if (failure.statusCode !== undefined) {
+    parts.push(`status ${failure.statusCode}`);
+  }
+  return parts.length === 0 ? "" : ` (${parts.join(", ")})`;
+}
+
+async function handleAiFailure(
+  env: Env,
+  channel: SummaryChannel,
+  lastMessageId: string,
+  failure: AiFailure,
+  error: unknown,
+) {
+  const detail = aiFailureDetail(failure);
+  if (failure.transient) {
+    console.warn(
+      `Workers AI is temporarily unavailable for channel ${channel.channelId}${detail}, retrying next poll`,
+      error,
+    );
+    return;
+  }
+
+  const failures = channel.failureCount + 1;
+  if (failures >= AI_MAX_FAILURES) {
+    console.error(
+      `Skipping summary window in channel ${channel.channelId} after ${failures} failed attempts${detail}`,
+      error,
+    );
+    await updateSummaryProgress(env.DB, channel.guildId, channel.channelId, {
+      lastMessageId,
+      failureCount: 0,
+    });
+    return;
+  }
+  console.error(
+    `Summary failed for channel ${channel.channelId} (attempt ${failures}/${AI_MAX_FAILURES})${detail}`,
     error,
   );
   await updateSummaryProgress(env.DB, channel.guildId, channel.channelId, {
@@ -361,20 +438,23 @@ async function processChannel(env: Env, deps: SummaryDeps, channel: SummaryChann
       return posted;
     }
 
+    let summary: string;
+    try {
+      summary = await summarizeWindow(deps.summarize, windowMessages);
+    } catch (error) {
+      await handleAiFailure(env, channel, lastMessage.id, classifyAiFailure(error), error);
+      return posted;
+    }
+
     try {
       await deps.rest.post(Routes.channelMessages(channel.channelId), {
         body: {
           content: "@here #summary",
-          embeds: [
-            buildSummaryEmbed(
-              await summarizeWindow(deps.summarize, windowMessages),
-              windowMessages,
-            ),
-          ],
+          embeds: [buildSummaryEmbed(summary, windowMessages)],
         },
       });
     } catch (error) {
-      await handleWindowFailure(env, channel, lastMessage.id, error);
+      await handlePostFailure(env, channel, lastMessage.id, error);
       return posted;
     }
 

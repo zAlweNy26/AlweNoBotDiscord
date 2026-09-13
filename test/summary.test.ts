@@ -1,4 +1,5 @@
 import { env } from "cloudflare:test";
+import { APICallError } from "ai";
 import { type APIEmbed, type APIMessage, type REST, Routes } from "discord.js";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { addSummaryChannel, getSummaryChannel, updateSummaryProgress } from "../src/db";
@@ -234,7 +235,7 @@ describe("runSummaryPoll", () => {
     expect((await getSummaryChannel(env.DB, "guild", "channel"))?.lastMessageId).toBe("105");
   });
 
-  it("keeps the pointer and counts the failure when AI fails", async () => {
+  it("keeps the pointer and counts a permanent AI failure", async () => {
     await addSummaryChannel(env.DB, "guild", "channel", 2, "0");
     const { rest, posted } = createRest([
       { id: "100", content: "first" },
@@ -251,9 +252,36 @@ describe("runSummaryPoll", () => {
     expect(row?.failureCount).toBe(1);
   });
 
-  it("skips the window after three consecutive failures", async () => {
+  it("keeps the pointer and does not count a transient AI failure", async () => {
     await addSummaryChannel(env.DB, "guild", "channel", 2, "0");
-    await updateSummaryProgress(env.DB, "guild", "channel", { failureCount: 2 });
+    const { rest, posted } = createRest([
+      { id: "100", content: "first" },
+      { id: "101", content: "second" },
+    ]);
+    const summarize = vi.fn(async () => {
+      throw new APICallError({
+        message: "Workers AI request failed with status 429",
+        url: "workers-ai:binding/run/@cf/zai-org/glm-4.7-flash",
+        requestBodyValues: {},
+        statusCode: 429,
+        data: { workersAIErrorCode: 3040 },
+      });
+    });
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    await runSummaryPoll(env as unknown as Env, deps(rest, summarize));
+
+    expect(posted).toHaveLength(0);
+    const row = await getSummaryChannel(env.DB, "guild", "channel");
+    expect(row?.lastMessageId).toBe("0");
+    expect(row?.failureCount).toBe(0);
+    expect(warn.mock.calls.flat().join(" ")).toContain("3040");
+    warn.mockRestore();
+  });
+
+  it("skips the window after ten consecutive AI failures", async () => {
+    await addSummaryChannel(env.DB, "guild", "channel", 2, "0");
+    await updateSummaryProgress(env.DB, "guild", "channel", { failureCount: 9 });
     const { rest, posted } = createRest([
       { id: "100", content: "first" },
       { id: "101", content: "second" },
@@ -264,6 +292,25 @@ describe("runSummaryPoll", () => {
     await runSummaryPoll(env as unknown as Env, deps(rest, summarize));
 
     expect(posted).toHaveLength(0);
+    const row = await getSummaryChannel(env.DB, "guild", "channel");
+    expect(row?.lastMessageId).toBe("101");
+    expect(row?.failureCount).toBe(0);
+  });
+
+  it("keeps the three-strike skip for Discord post failures", async () => {
+    await addSummaryChannel(env.DB, "guild", "channel", 2, "0");
+    await updateSummaryProgress(env.DB, "guild", "channel", { failureCount: 2 });
+    const { rest } = createRest([
+      { id: "100", content: "first" },
+      { id: "101", content: "second" },
+    ]);
+    const post = vi.fn(async () => {
+      throw Object.assign(new Error("Server Error"), { status: 500 });
+    });
+    const failingRest = { get: rest.get, post } as unknown as REST;
+
+    await runSummaryPoll(env as unknown as Env, deps(failingRest, createSummarize()));
+
     const row = await getSummaryChannel(env.DB, "guild", "channel");
     expect(row?.lastMessageId).toBe("101");
     expect(row?.failureCount).toBe(0);
