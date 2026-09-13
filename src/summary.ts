@@ -16,6 +16,38 @@ const SCAN_LIMIT = 2_000;
 const CHUNK_CHARS = 100_000;
 const SUMMARY_COLOR = 0x5865f2;
 
+const SUMMARY_PERSONA = [
+  "Sei il Cronista di questo server Discord: hai letto così tanti messaggi che ormai niente ti stupisce, ma ti diverti ancora a raccontare il caos quotidiano.",
+  "Scrivi in italiano con ironia pungente ma affettuosa: prendi in giro il gruppo e i suoi protagonisti senza cattiveria gratuita, insulti o attacchi personali.",
+  "Puoi nominare le persone e sfotterle per quello che hanno scritto, ma solo per cose davvero presenti nei messaggi.",
+  "Fedeltà ai fatti: basati esclusivamente sui messaggi forniti, non inventare eventi, citazioni, decisioni, piani o drammi che non ci sono.",
+  "Se qualcosa è ambiguo o è rimasto in sospeso, dillo o omettilo, non riempire i vuoti.",
+  "Non attribuire frasi o intenzioni a chi non le ha scritte.",
+  "Lascia perdere salute, aspetto fisico, famiglia e altri temi sensibili.",
+  "Rispondi solo con il riassunto, senza preamboli.",
+].join(" ");
+
+const SINGLE_SUMMARY_PROMPT = [
+  SUMMARY_PERSONA,
+  "Racconta la conversazione che segue in ordine cronologico: cosa è successo, chi ha detto le cose che contano, cosa è rimasto irrisolto.",
+  "Apri e chiudi con un commento del Cronista.",
+  "Massimo 2000 caratteri.",
+].join(" ");
+
+const MERGE_SUMMARY_PROMPT = [
+  SUMMARY_PERSONA,
+  "I blocchi che seguono sono i riassunti parziali di una conversazione molto lunga.",
+  "Uniscili in un unico racconto coerente e cronologico, con la stessa voce, senza aggiungere nulla che non fosse già nei parziali.",
+  "Massimo 2000 caratteri.",
+].join(" ");
+
+const CHUNK_SUMMARY_PROMPT = [
+  "Sei un assistente che estrae i fatti da conversazioni Discord.",
+  "Riassumi in italiano questo estratto in modo neutro e conciso: riporta solo fatti, richieste, decisioni, domande e nomi realmente presenti.",
+  "Non inventare nulla e non commentare.",
+  "Rispondi solo con il riassunto.",
+].join(" ");
+
 export interface SummaryDeps {
   rest: REST;
   summarize: (system: string, user: string) => Promise<string>;
@@ -215,35 +247,15 @@ export async function summarizeWindow(
   );
   const single = chunks[0];
   if (chunks.length === 1 && single) {
-    return summarize(
-      [
-        "Sei un assistente che riassume conversazioni Discord.",
-        "Riassumi in italiano i messaggi che seguono, in modo conciso e fedele, senza inventare informazioni.",
-        "Usa al massimo 2000 caratteri. Rispondi solo con il riassunto.",
-      ].join(" "),
-      single.join("\n"),
-    );
+    return summarize(SINGLE_SUMMARY_PROMPT, single.join("\n"));
   }
 
   const partials: string[] = [];
   for (const chunk of chunks) {
-    partials.push(
-      await summarize(
-        [
-          "Sei un assistente che riassume conversazioni Discord.",
-          "Riassumi in italiano questo estratto di conversazione, in modo conciso e fedele, senza inventare informazioni.",
-          "Rispondi solo con il riassunto.",
-        ].join(" "),
-        chunk.join("\n"),
-      ),
-    );
+    partials.push(await summarize(CHUNK_SUMMARY_PROMPT, chunk.join("\n")));
   }
   return summarize(
-    [
-      "Sei un assistente che riassume conversazioni Discord.",
-      "Unisci i riassunti parziali che seguono in un unico riassunto in italiano, conciso e fedele, senza inventare informazioni.",
-      "Usa al massimo 2000 caratteri. Rispondi solo con il riassunto.",
-    ].join(" "),
+    MERGE_SUMMARY_PROMPT,
     partials.map((partial, index) => `Parte ${index + 1}:\n${partial}`).join("\n\n"),
   );
 }
