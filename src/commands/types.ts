@@ -1,13 +1,11 @@
 import type {
+  APIChatInputApplicationCommandInteraction,
+  APIInteractionResponse,
+  REST,
   SlashCommandBuilder,
   SlashCommandOptionsOnlyBuilder,
   SlashCommandSubcommandsOnlyBuilder,
-} from "@discordjs/builders";
-import type { REST } from "@discordjs/rest";
-import type {
-  APIChatInputApplicationCommandInteraction,
-  APIInteractionResponse,
-} from "discord-api-types/v10";
+} from "discord.js";
 
 export type CommandCategory = "Mod" | "Info" | "Misc";
 

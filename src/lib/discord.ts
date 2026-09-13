@@ -1,4 +1,4 @@
-import type { APIGuild, APIUser } from "discord-api-types/v10";
+import type { APIGuild, APIUser } from "discord.js";
 
 const CDN_BASE = "https://cdn.discordapp.com";
 

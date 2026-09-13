@@ -1,9 +1,9 @@
-import { SlashCommandBuilder } from "@discordjs/builders";
 import {
   type APIApplicationCommandInteractionDataSubcommandOption,
   ApplicationCommandOptionType,
   PermissionFlagsBits,
-} from "discord-api-types/v10";
+  SlashCommandBuilder,
+} from "discord.js";
 import {
   DEFAULT_COUNTER_FORMAT,
   DEFAULT_FAREWELL_MESSAGE,

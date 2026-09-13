@@ -1,4 +1,4 @@
-import { SlashCommandBuilder } from "@discordjs/builders";
+import { SlashCommandBuilder } from "discord.js";
 import { fetchJson } from "../lib/http";
 import { ERROR_COLOR, SUCCESS_COLOR } from "../respond";
 import { runDeferred } from "./deferred";

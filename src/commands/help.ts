@@ -1,4 +1,4 @@
-import { SlashCommandBuilder } from "@discordjs/builders";
+import { SlashCommandBuilder } from "discord.js";
 import { embedResponse, SUCCESS_COLOR } from "../respond";
 import { commands } from "./registry";
 import type { Command, CommandCategory } from "./types";

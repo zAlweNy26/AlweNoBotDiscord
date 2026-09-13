@@ -1,11 +1,11 @@
-import { SlashCommandBuilder } from "@discordjs/builders";
 import {
   type APIApplicationCommandInteractionDataSubcommandOption,
   type APIMessage,
   ApplicationCommandOptionType,
   PermissionFlagsBits,
   Routes,
-} from "discord-api-types/v10";
+  SlashCommandBuilder,
+} from "discord.js";
 import {
   addSummaryChannel,
   getSummaryChannel,

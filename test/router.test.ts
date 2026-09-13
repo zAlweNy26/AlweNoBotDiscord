@@ -1,6 +1,9 @@
-import type { REST } from "@discordjs/rest";
-import type { APIInteraction } from "discord-api-types/v10";
-import { InteractionResponseType, InteractionType } from "discord-api-types/v10";
+import {
+  type APIInteraction,
+  InteractionResponseType,
+  InteractionType,
+  type REST,
+} from "discord.js";
 import { describe, expect, it } from "vitest";
 import { routeInteraction } from "../src/router";
 

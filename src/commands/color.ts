@@ -1,5 +1,5 @@
-import { SlashCommandBuilder } from "@discordjs/builders";
 import convert from "color-convert";
+import { SlashCommandBuilder } from "discord.js";
 import { embedResponse, ephemeralError } from "../respond";
 import { getStringOption } from "./options";
 import type { Command } from "./types";

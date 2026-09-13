@@ -1,5 +1,4 @@
-import { SlashCommandBuilder } from "@discordjs/builders";
-import type { APIEmbedField } from "discord-api-types/v10";
+import { type APIEmbedField, SlashCommandBuilder } from "discord.js";
 import { userAvatarUrl } from "../lib/discord";
 import { formatDate, snowflakeToDate } from "../lib/format";
 import { embedResponse, ephemeralError, SUCCESS_COLOR } from "../respond";

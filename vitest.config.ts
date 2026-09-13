@@ -15,6 +15,10 @@ export default defineConfig(async () => {
     resolve: {
       alias: [
         {
+          find: /^discord\.js$/,
+          replacement: fileURLToPath(new URL("./test/discord-shim.ts", import.meta.url)),
+        },
+        {
           find: /^discord-api-types\/v10$/,
           replacement: fileURLToPath(
             new URL("./node_modules/discord-api-types/v10.js", import.meta.url),

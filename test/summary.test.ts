@@ -1,6 +1,5 @@
 import { env } from "cloudflare:test";
-import type { REST } from "@discordjs/rest";
-import type { APIEmbed, APIMessage } from "discord-api-types/v10";
+import type { APIEmbed, APIMessage, REST } from "discord.js";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { addSummaryChannel, getSummaryChannel, updateSummaryProgress } from "../src/db";
 import {

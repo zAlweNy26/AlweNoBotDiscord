@@ -1,5 +1,4 @@
-import { SlashCommandBuilder } from "@discordjs/builders";
-import type { APIEmbed, APIEmbedField } from "discord-api-types/v10";
+import { type APIEmbed, type APIEmbedField, SlashCommandBuilder } from "discord.js";
 import { getCountryName } from "../lib/countries";
 import { formatIsoTimestamp } from "../lib/format";
 import { fetchJson } from "../lib/http";

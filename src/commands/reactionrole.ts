@@ -1,15 +1,17 @@
-import { ActionRowBuilder, ButtonBuilder, SlashCommandBuilder } from "@discordjs/builders";
-import type { REST } from "@discordjs/rest";
 import {
+  ActionRowBuilder,
   type APIApplicationCommandInteractionDataSubcommandOption,
   type APIInteractionResponse,
   type APIMessage,
   type APIMessageComponentInteraction,
   ApplicationCommandOptionType,
+  ButtonBuilder,
   ButtonStyle,
   PermissionFlagsBits,
+  type REST,
   Routes,
-} from "discord-api-types/v10";
+  SlashCommandBuilder,
+} from "discord.js";
 import { addRoleButton, deleteRoleButtonsForMessage, getRoleButton } from "../db";
 import { ERROR_COLOR, ephemeralEmbed, ephemeralError, SUCCESS_COLOR } from "../respond";
 import type { Command } from "./types";

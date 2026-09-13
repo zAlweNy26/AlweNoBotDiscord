@@ -1,5 +1,4 @@
-import { SlashCommandBuilder } from "@discordjs/builders";
-import type { APIEmbed, APIEmbedField } from "discord-api-types/v10";
+import { type APIEmbed, type APIEmbedField, SlashCommandBuilder } from "discord.js";
 import { fetchJson } from "../lib/http";
 import { ERROR_COLOR, SUCCESS_COLOR } from "../respond";
 import { runDeferred } from "./deferred";

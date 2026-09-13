@@ -1,6 +1,4 @@
-import { SlashCommandBuilder } from "@discordjs/builders";
-import type { APIUnavailableGuild } from "discord-api-types/v10";
-import { Routes } from "discord-api-types/v10";
+import { type APIUnavailableGuild, Routes, SlashCommandBuilder } from "discord.js";
 import { embedResponse, SUCCESS_COLOR } from "../respond";
 import type { Command } from "./types";
 

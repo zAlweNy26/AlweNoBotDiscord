@@ -12,7 +12,7 @@ through Drizzle ORM. There is no always-on process and no `discord.js` client.
 - Runtime: Cloudflare Workers (workerd)
 - Language: TypeScript
 - Package manager / local tooling: Bun
-- Discord: `@discordjs/rest`, `@discordjs/builders`, `discord-api-types`
+- Discord: `discord.js` v14
 - Storage: Cloudflare D1 + Drizzle ORM (migrations via drizzle-kit)
 - Gateway: custom Durable Object + DO alarms
 - Tests: Vitest with `@cloudflare/vitest-pool-workers` (real workerd)
@@ -68,12 +68,13 @@ BING_MAPS_KEY=
 1. `bunx wrangler d1 create alwenobot` and put the id into `wrangler.jsonc` (already configured here)
 2. `bun run d1:migrate:remote`
 3. Set secrets: `bunx wrangler secret put DISCORD_TOKEN`, repeat for the other secrets
-4. `bun run deploy`
+4. `bun run deploy` — deploys the Worker and registers the global slash commands
 5. In the Discord Developer Portal:
    - set the Interactions Endpoint URL to `https://<worker>.<subdomain>.workers.dev/interactions`
    - enable the **Server Members Intent** (required for welcome/farewell/counter)
    - enable the **Message Content Intent** (required for `/summary`)
-6. `bun run register` — registers the global slash commands
+
+`bun run register` remains available to refresh the Discord-side command definitions without deploying (for example description-only changes).
 
 ## Commands
 

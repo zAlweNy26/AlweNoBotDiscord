@@ -1,5 +1,9 @@
-import type { APIEmbed, APIInteractionResponse } from "discord-api-types/v10";
-import { InteractionResponseType, MessageFlags } from "discord-api-types/v10";
+import {
+  type APIEmbed,
+  type APIInteractionResponse,
+  InteractionResponseType,
+  MessageFlags,
+} from "discord.js";
 
 export const ERROR_COLOR = 0xc80000;
 export const SUCCESS_COLOR = 0x00ae86;

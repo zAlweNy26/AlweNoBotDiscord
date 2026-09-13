@@ -1,11 +1,12 @@
-import type { REST } from "@discordjs/rest";
-import type {
-  APIChatInputApplicationCommandInteraction,
-  APIInteraction,
-  APIInteractionResponse,
-  APIMessageComponentInteraction,
-} from "discord-api-types/v10";
-import { InteractionResponseType, InteractionType } from "discord-api-types/v10";
+import {
+  type APIChatInputApplicationCommandInteraction,
+  type APIInteraction,
+  type APIInteractionResponse,
+  type APIMessageComponentInteraction,
+  InteractionResponseType,
+  InteractionType,
+  type REST,
+} from "discord.js";
 import { commandMap } from "./commands";
 import { handleRoleButton } from "./commands/reactionrole";
 import { ephemeralError } from "./respond";

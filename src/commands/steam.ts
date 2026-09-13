@@ -1,5 +1,4 @@
-import { SlashCommandBuilder } from "@discordjs/builders";
-import type { APIEmbed, APIEmbedField } from "discord-api-types/v10";
+import { type APIEmbed, type APIEmbedField, SlashCommandBuilder } from "discord.js";
 import { colorByStatus } from "../lib/colors";
 import { getCountryName } from "../lib/countries";
 import { formatUnixTimestamp } from "../lib/format";

@@ -1,6 +1,4 @@
-import { REST } from "@discordjs/rest";
-import type { APIInteraction } from "discord-api-types/v10";
-import { InteractionType } from "discord-api-types/v10";
+import { type APIInteraction, InteractionType, REST } from "discord.js";
 import { GatewayDO } from "./gateway/GatewayDO";
 import { ephemeralError } from "./respond";
 import { routeInteraction } from "./router";

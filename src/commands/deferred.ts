@@ -1,5 +1,4 @@
-import type { APIEmbed, APIInteractionResponse } from "discord-api-types/v10";
-import { Routes } from "discord-api-types/v10";
+import { type APIEmbed, type APIInteractionResponse, Routes } from "discord.js";
 import { deferredResponse, ERROR_COLOR } from "../respond";
 import type { CommandContext } from "./types";
 

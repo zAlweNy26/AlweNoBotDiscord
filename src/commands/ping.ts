@@ -1,6 +1,4 @@
-import { SlashCommandBuilder } from "@discordjs/builders";
-import type { APIMessage } from "discord-api-types/v10";
-import { Routes } from "discord-api-types/v10";
+import { type APIMessage, Routes, SlashCommandBuilder } from "discord.js";
 import { snowflakeToDate } from "../lib/format";
 import { SUCCESS_COLOR } from "../respond";
 import { runDeferred } from "./deferred";

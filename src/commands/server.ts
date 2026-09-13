@@ -1,6 +1,4 @@
-import { SlashCommandBuilder } from "@discordjs/builders";
-import type { APIEmbedField, APIGuild } from "discord-api-types/v10";
-import { Routes } from "discord-api-types/v10";
+import { type APIEmbedField, type APIGuild, Routes, SlashCommandBuilder } from "discord.js";
 import { guildIconUrl } from "../lib/discord";
 import { formatDate, snowflakeToDate } from "../lib/format";
 import { embedResponse, ephemeralError, SUCCESS_COLOR } from "../respond";

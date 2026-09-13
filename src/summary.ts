@@ -1,6 +1,5 @@
-import type { REST } from "@discordjs/rest";
 import { generateText } from "ai";
-import { type APIEmbed, type APIMessage, Routes } from "discord-api-types/v10";
+import { type APIEmbed, type APIMessage, type REST, Routes } from "discord.js";
 import { createWorkersAI } from "workers-ai-provider";
 import {
   listSummaryChannels,

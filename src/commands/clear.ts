@@ -1,6 +1,4 @@
-import { SlashCommandBuilder } from "@discordjs/builders";
-import type { APIMessage } from "discord-api-types/v10";
-import { PermissionFlagsBits, Routes } from "discord-api-types/v10";
+import { type APIMessage, PermissionFlagsBits, Routes, SlashCommandBuilder } from "discord.js";
 import { ephemeralEmbed, ephemeralError, SUCCESS_COLOR } from "../respond";
 import { getIntegerOption } from "./options";
 import type { Command } from "./types";

@@ -1,5 +1,7 @@
-import type { APIChatInputApplicationCommandInteraction } from "discord-api-types/v10";
-import { ApplicationCommandOptionType } from "discord-api-types/v10";
+import {
+  type APIChatInputApplicationCommandInteraction,
+  ApplicationCommandOptionType,
+} from "discord.js";
 
 type Interaction = APIChatInputApplicationCommandInteraction;
 
