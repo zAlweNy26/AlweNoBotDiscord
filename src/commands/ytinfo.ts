@@ -70,19 +70,19 @@ export const ytinfoCommand: Command = {
         return error("Chiave API di YouTube non configurata.");
       }
 
-      const tipo = getStringOption(context.interaction, "tipo");
       const valore = getStringOption(context.interaction, "valore") ?? "";
 
       let channelId: string | undefined;
-      if (tipo === "id") {
+      if (getStringOption(context.interaction, "tipo") === "id") {
         channelId = valore.trim();
       } else {
         try {
-          const search = await fetchJson<SearchResponse>(
-            `${API_BASE}/search?part=snippet&type=channel&maxResults=1` +
-              `&q=${encodeURIComponent(valore)}&key=${encodeURIComponent(key)}`,
-          );
-          channelId = search.items?.[0]?.id?.channelId;
+          channelId = (
+            await fetchJson<SearchResponse>(
+              `${API_BASE}/search?part=snippet&type=channel&maxResults=1` +
+                `&q=${encodeURIComponent(valore)}&key=${encodeURIComponent(key)}`,
+            )
+          ).items?.[0]?.id?.channelId;
         } catch (searchError) {
           console.error("YouTube search failed", searchError);
           return apiError(searchError);

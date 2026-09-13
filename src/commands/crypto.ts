@@ -1,5 +1,4 @@
 import { SlashCommandBuilder } from "@discordjs/builders";
-import type { APIEmbedField } from "discord-api-types/v10";
 import { fetchJson } from "../lib/http";
 import { ERROR_COLOR, SUCCESS_COLOR } from "../respond";
 import { runDeferred } from "./deferred";
@@ -57,24 +56,22 @@ export const cryptoCommand: Command = {
         };
       }
 
-      const fields: APIEmbedField[] = [
-        { name: "Prezzo", value: formatEuro(coin.current_price), inline: true },
-        {
-          name: "Variazione 24h",
-          value: formatEuro(coin.price_change_percentage_24h),
-          inline: true,
-        },
-        { name: "Massimo 24h", value: formatEuro(coin.high_24h), inline: true },
-        { name: "Minimo 24h", value: formatEuro(coin.low_24h), inline: true },
-      ];
-
       return {
         embeds: [
           {
             color: SUCCESS_COLOR,
             author: { name: `${coin.name} (${coin.symbol.toUpperCase()})` },
             thumbnail: { url: coin.image },
-            fields,
+            fields: [
+              { name: "Prezzo", value: formatEuro(coin.current_price), inline: true },
+              {
+                name: "Variazione 24h",
+                value: formatEuro(coin.price_change_percentage_24h),
+                inline: true,
+              },
+              { name: "Massimo 24h", value: formatEuro(coin.high_24h), inline: true },
+              { name: "Minimo 24h", value: formatEuro(coin.low_24h), inline: true },
+            ],
           },
         ],
       };

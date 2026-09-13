@@ -17,8 +17,7 @@ import type { Command } from "./types";
 const CUSTOM_ID_PREFIX = "role:";
 
 function messageIdFromInput(input: string): string | null {
-  const match = /(\d{17,20})/.exec(input.trim());
-  return match?.[1] ?? null;
+  return /(\d{17,20})/.exec(input.trim())?.[1] ?? null;
 }
 
 function getSubOption(
@@ -46,8 +45,7 @@ export async function handleRoleButton(
   if (!guildId) {
     return ephemeralError("Questo pulsante può essere usato solo in un server.");
   }
-  const mapping = await getRoleButton(context.env.DB, interaction.message.id, roleId);
-  if (!mapping) {
+  if (!(await getRoleButton(context.env.DB, interaction.message.id, roleId))) {
     return ephemeralError("Questo pulsante non è più attivo.");
   }
   const userId = interaction.user?.id;
@@ -106,7 +104,7 @@ export const reactionroleCommand: Command = {
         ),
     ),
   async execute(context) {
-    const { env, interaction, rest } = context;
+    const { env, interaction } = context;
     const guildId = interaction.guild_id;
     if (!guildId) {
       return ephemeralError("Questo comando può essere usato solo in un server.");
@@ -125,16 +123,23 @@ export const reactionroleCommand: Command = {
         getSubOption(subcommand, "testo", ApplicationCommandOptionType.String) ??
         interaction.data.resolved?.roles?.[roleId]?.name ??
         "Ruolo";
-      const button = new ButtonBuilder()
-        .setCustomId(`${CUSTOM_ID_PREFIX}${roleId}`)
-        .setLabel(label)
-        .setStyle(ButtonStyle.Primary);
-      const row = new ActionRowBuilder<ButtonBuilder>().addComponents(button);
-      const message = (await rest.post(Routes.channelMessages(channelId), {
-        body: { components: [row.toJSON()] },
-      })) as APIMessage;
       await addRoleButton(env.DB, {
-        messageId: message.id,
+        messageId: (
+          (await context.rest.post(Routes.channelMessages(channelId), {
+            body: {
+              components: [
+                new ActionRowBuilder<ButtonBuilder>()
+                  .addComponents(
+                    new ButtonBuilder()
+                      .setCustomId(`${CUSTOM_ID_PREFIX}${roleId}`)
+                      .setLabel(label)
+                      .setStyle(ButtonStyle.Primary),
+                  )
+                  .toJSON(),
+              ],
+            },
+          })) as APIMessage
+        ).id,
         roleId,
         guildId,
         label,

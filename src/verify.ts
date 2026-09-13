@@ -1,5 +1,3 @@
-const encoder = new TextEncoder();
-
 const MAX_TIMESTAMP_SKEW_MS = 5 * 60 * 1000;
 
 function hexToBytes(hex: string): Uint8Array | null {
@@ -26,31 +24,31 @@ export interface SignatureVerificationInput {
 }
 
 export async function verifyDiscordSignature(input: SignatureVerificationInput): Promise<boolean> {
-  const { publicKeyHex, signatureHex, timestamp, body, now = Date.now() } = input;
+  const { signatureHex, timestamp } = input;
   if (!signatureHex || !timestamp) {
     return false;
   }
 
   const timestampMs = Number(timestamp) * 1000;
-  if (!Number.isFinite(timestampMs) || Math.abs(now - timestampMs) > MAX_TIMESTAMP_SKEW_MS) {
+  if (
+    !Number.isFinite(timestampMs) ||
+    Math.abs((input.now ?? Date.now()) - timestampMs) > MAX_TIMESTAMP_SKEW_MS
+  ) {
     return false;
   }
 
-  const keyBytes = hexToBytes(publicKeyHex);
+  const keyBytes = hexToBytes(input.publicKeyHex);
   const signatureBytes = hexToBytes(signatureHex);
   if (!keyBytes || !signatureBytes) {
     return false;
   }
 
   try {
-    const key = await crypto.subtle.importKey("raw", keyBytes, { name: "Ed25519" }, false, [
-      "verify",
-    ]);
     return await crypto.subtle.verify(
       { name: "Ed25519" },
-      key,
+      await crypto.subtle.importKey("raw", keyBytes, { name: "Ed25519" }, false, ["verify"]),
       signatureBytes,
-      encoder.encode(timestamp + body),
+      new TextEncoder().encode(timestamp + input.body),
     );
   } catch {
     return false;

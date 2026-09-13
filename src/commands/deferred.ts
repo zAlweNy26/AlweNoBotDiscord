@@ -12,9 +12,7 @@ export function runDeferred(
   context: CommandContext,
   work: () => Promise<DeferredBody>,
 ): APIInteractionResponse {
-  const { env, rest, interaction, waitUntil } = context;
-
-  waitUntil(
+  context.waitUntil(
     (async () => {
       let body: DeferredBody;
       try {
@@ -32,8 +30,12 @@ export function runDeferred(
       }
 
       try {
-        await rest.patch(
-          Routes.webhookMessage(env.DISCORD_APPLICATION_ID, interaction.token, "@original"),
+        await context.rest.patch(
+          Routes.webhookMessage(
+            context.env.DISCORD_APPLICATION_ID,
+            context.interaction.token,
+            "@original",
+          ),
           { body },
         );
       } catch (error) {

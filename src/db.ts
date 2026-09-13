@@ -29,12 +29,11 @@ export async function getGuildSettings(
   db: D1Database,
   guildId: string,
 ): Promise<GuildSettings | null> {
-  const rows = await orm(db)
-    .select()
-    .from(guildSettings)
-    .where(eq(guildSettings.guildId, guildId))
-    .limit(1);
-  return rows[0] ?? null;
+  return (
+    (
+      await orm(db).select().from(guildSettings).where(eq(guildSettings.guildId, guildId)).limit(1)
+    )[0] ?? null
+  );
 }
 
 export async function ensureGuildSettings(db: D1Database, guildId: string): Promise<GuildSettings> {
@@ -96,12 +95,15 @@ export async function getSummaryChannel(
   guildId: string,
   channelId: string,
 ): Promise<SummaryChannel | null> {
-  const rows = await orm(db)
-    .select()
-    .from(summaryChannels)
-    .where(and(eq(summaryChannels.guildId, guildId), eq(summaryChannels.channelId, channelId)))
-    .limit(1);
-  return rows[0] ?? null;
+  return (
+    (
+      await orm(db)
+        .select()
+        .from(summaryChannels)
+        .where(and(eq(summaryChannels.guildId, guildId), eq(summaryChannels.channelId, channelId)))
+        .limit(1)
+    )[0] ?? null
+  );
 }
 
 export async function addSummaryChannel(
@@ -176,12 +178,15 @@ export async function getRoleButton(
   messageId: string,
   roleId: string,
 ): Promise<RoleButton | null> {
-  const rows = await orm(db)
-    .select()
-    .from(roleButtons)
-    .where(and(eq(roleButtons.messageId, messageId), eq(roleButtons.roleId, roleId)))
-    .limit(1);
-  return rows[0] ?? null;
+  return (
+    (
+      await orm(db)
+        .select()
+        .from(roleButtons)
+        .where(and(eq(roleButtons.messageId, messageId), eq(roleButtons.roleId, roleId)))
+        .limit(1)
+    )[0] ?? null
+  );
 }
 
 export async function listRoleButtons(db: D1Database, guildId: string): Promise<RoleButton[]> {

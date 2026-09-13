@@ -30,8 +30,9 @@ interface ConfigSpec {
 function getSubcommand(
   interaction: Parameters<Command["execute"]>[0]["interaction"],
 ): APIApplicationCommandInteractionDataSubcommandOption | undefined {
-  const option = interaction.data.options?.[0];
-  return option?.type === ApplicationCommandOptionType.Subcommand ? option : undefined;
+  return interaction.data.options?.[0]?.type === ApplicationCommandOptionType.Subcommand
+    ? interaction.data.options?.[0]
+    : undefined;
 }
 
 function getSubOption(
@@ -125,7 +126,6 @@ function buildConfigCommand(spec: ConfigSpec): Command {
         }
         case "mostra": {
           const channelId = settings[spec.channelField];
-          const text = settings[spec.textField];
           return embedResponse({
             color: SUCCESS_COLOR,
             title: `⚙️ Configurazione ${spec.label}`,
@@ -142,7 +142,7 @@ function buildConfigCommand(spec: ConfigSpec): Command {
               },
               {
                 name: spec.textOptionName === "formato" ? "Formato" : "Messaggio",
-                value: text ?? spec.defaultText,
+                value: settings[spec.textField] ?? spec.defaultText,
               },
             ],
           });

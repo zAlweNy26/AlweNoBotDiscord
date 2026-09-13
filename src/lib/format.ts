@@ -22,8 +22,7 @@ export function formatDate(date: Date, withTime: boolean): string {
   const month = MONTHS[date.getMonth()];
   const year = date.getFullYear();
   if (!withTime) return `${day} ${month} ${year}`;
-  const time = `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
-  return `${day} ${month} ${year} alle ${time}`;
+  return `${day} ${month} ${year} alle ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
 }
 
 export function formatIsoTimestamp(timestamp: string | number): string {

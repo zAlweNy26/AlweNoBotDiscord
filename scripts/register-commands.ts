@@ -35,8 +35,9 @@ if (!token || !applicationId) {
   process.exit(1);
 }
 
-const rest = new REST({ version: "10" }).setToken(token);
 const body = commands.map((command) => command.data.toJSON());
 
-await rest.put(Routes.applicationCommands(applicationId), { body });
+await new REST({ version: "10" })
+  .setToken(token)
+  .put(Routes.applicationCommands(applicationId), { body });
 console.log(`Registrati ${body.length} comandi globali.`);

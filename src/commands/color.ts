@@ -1,6 +1,5 @@
 import { SlashCommandBuilder } from "@discordjs/builders";
 import convert from "color-convert";
-import type { APIEmbedField } from "discord-api-types/v10";
 import { embedResponse, ephemeralError } from "../respond";
 import { getStringOption } from "./options";
 import type { Command } from "./types";
@@ -26,14 +25,14 @@ function toRgb(format: Format, raw: string): Rgb | null {
     if (!/^[0-9a-f]{3}$|^[0-9a-f]{6}$/i.test(hex)) {
       return null;
     }
-    const full =
+    return convert.hex.rgb(
       hex.length === 3
         ? hex
             .split("")
             .map((char) => char + char)
             .join("")
-        : hex;
-    return convert.hex.rgb(full) as Rgb;
+        : hex,
+    ) as Rgb;
   }
 
   const values = parseValues(raw);
@@ -109,33 +108,34 @@ export const colorCommand: Command = {
     const [h, s, l] = convert.rgb.hsl(rgb) as Rgb;
     const [hsvH, hsvS, hsvV] = convert.rgb.hsv(rgb) as Rgb;
     const [hcgH, hcgC, hcgG] = convert.rgb.hcg(rgb) as Rgb;
-    const xyz = convert.rgb.xyz(rgb) as Rgb;
-
-    const fields: APIEmbedField[] = [
-      { name: "HEX", value: `#${hex}`, inline: true },
-      { name: "RGB", value: `${rgb.join(", ")}`, inline: true },
-      {
-        name: "HSL",
-        value: `${Math.round(h)}°, ${Math.round(s)}%, ${Math.round(l)}%`,
-        inline: true,
-      },
-      {
-        name: "HSV",
-        value: `${Math.round(hsvH)}°, ${Math.round(hsvS)}%, ${Math.round(hsvV)}%`,
-        inline: true,
-      },
-      { name: "XYZ", value: xyz.map((value) => value.toFixed(2)).join(", "), inline: true },
-      {
-        name: "HCG",
-        value: `${Math.round(hcgH)}°, ${Math.round(hcgC)}%, ${Math.round(hcgG)}%`,
-        inline: true,
-      },
-    ];
 
     return embedResponse({
       color: Number.parseInt(hex, 16),
       title: "🎨 Colore",
-      fields,
+      fields: [
+        { name: "HEX", value: `#${hex}`, inline: true },
+        { name: "RGB", value: `${rgb.join(", ")}`, inline: true },
+        {
+          name: "HSL",
+          value: `${Math.round(h)}°, ${Math.round(s)}%, ${Math.round(l)}%`,
+          inline: true,
+        },
+        {
+          name: "HSV",
+          value: `${Math.round(hsvH)}°, ${Math.round(hsvS)}%, ${Math.round(hsvV)}%`,
+          inline: true,
+        },
+        {
+          name: "XYZ",
+          value: (convert.rgb.xyz(rgb) as Rgb).map((value) => value.toFixed(2)).join(", "),
+          inline: true,
+        },
+        {
+          name: "HCG",
+          value: `${Math.round(hcgH)}°, ${Math.round(hcgC)}%, ${Math.round(hcgG)}%`,
+          inline: true,
+        },
+      ],
     });
   },
 };

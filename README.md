@@ -78,7 +78,7 @@ BING_MAPS_KEY=
 ## Commands
 
 - Info: `/ping`, `/info`, `/server`, `/stats` (owner only)
-- Mod: `/help`, `/clear`, `/welcome`, `/farewell`, `/counter`, `/summary`, `/nickall` (server owner only), `/reactionrole`
+- Mod: `/help`, `/clear`, `/welcome`, `/farewell`, `/counter`, `/summary`, `/reactionrole`
 - Misc: `/color`, `/crypto`, `/distance`, `/weather`, `/steam`, `/steamgame`, `/ytinfo`
 
 ## Notes

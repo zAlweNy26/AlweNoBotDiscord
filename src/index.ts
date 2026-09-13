@@ -14,13 +14,14 @@ async function handleInteractions(
   ctx: ExecutionContext,
 ): Promise<Response> {
   const body = await request.text();
-  const valid = await verifyDiscordSignature({
-    publicKeyHex: env.DISCORD_PUBLIC_KEY,
-    signatureHex: request.headers.get("X-Signature-Ed25519"),
-    timestamp: request.headers.get("X-Signature-Timestamp"),
-    body,
-  });
-  if (!valid) {
+  if (
+    !(await verifyDiscordSignature({
+      publicKeyHex: env.DISCORD_PUBLIC_KEY,
+      signatureHex: request.headers.get("X-Signature-Ed25519"),
+      timestamp: request.headers.get("X-Signature-Timestamp"),
+      body,
+    }))
+  ) {
     return new Response("Invalid signature", { status: 401 });
   }
 
@@ -29,14 +30,14 @@ async function handleInteractions(
     return Response.json({ type: 1 });
   }
 
-  const rest = new REST({ version: "10" }).setToken(env.DISCORD_TOKEN);
   try {
-    const response = await routeInteraction(interaction, {
-      env,
-      rest,
-      waitUntil: (promise) => ctx.waitUntil(promise),
-    });
-    return Response.json(response);
+    return Response.json(
+      await routeInteraction(interaction, {
+        env,
+        rest: new REST({ version: "10" }).setToken(env.DISCORD_TOKEN),
+        waitUntil: (promise) => ctx.waitUntil(promise),
+      }),
+    );
   } catch (error) {
     console.error("Interaction handling failed", error);
     return Response.json(

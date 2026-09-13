@@ -61,11 +61,6 @@ interface FetchResult {
   exhausted: boolean;
 }
 
-export interface SummaryPollResult {
-  channels: number;
-  processed: number;
-}
-
 export function isHumanMessage(message: APIMessage): boolean {
   return !message.author.bot && !message.webhook_id && message.content.trim().length > 0;
 }
@@ -124,15 +119,7 @@ async function fetchHumans(
   return { humans, scanned, exhausted };
 }
 
-export interface SummaryStatus {
-  counted: number;
-  ready: boolean;
-}
-
-export async function getSummaryStatus(
-  rest: REST,
-  channel: SummaryChannel,
-): Promise<SummaryStatus> {
+export async function getSummaryStatus(rest: REST, channel: SummaryChannel) {
   const result = await fetchHumans(
     rest,
     channel.channelId,
@@ -208,29 +195,31 @@ export function chunkTranscript(lines: string[], maxChars = CHUNK_CHARS): string
 export function buildSummaryEmbed(summary: string, messages: TranscriptMessage[]): APIEmbed {
   const first = messages[0];
   const last = messages[messages.length - 1];
-  const range =
-    first && last
-      ? `from ${formatTime(first.timestamp)} to ${formatTime(last.timestamp)}`
-      : "no time range";
   return {
     title: SUMMARY_TITLE,
     description: summary,
     color: SUMMARY_COLOR,
-    footer: { text: `${messages.length} messages · ${range}` },
+    footer: {
+      text: `${messages.length} messages · ${
+        first && last
+          ? `from ${formatTime(first.timestamp)} to ${formatTime(last.timestamp)}`
+          : "no time range"
+      }`,
+    },
     timestamp: new Date().toISOString(),
   };
 }
 
 export function createSummarizer(ai: Env["AI"]): SummaryDeps["summarize"] {
-  const workersai = createWorkersAI({ binding: ai });
   return async (system, user) => {
-    const { text } = await generateText({
-      model: workersai(MODEL),
-      maxRetries: 0,
-      instructions: system,
-      messages: [{ role: "user", content: user }],
-    });
-    const trimmed = text.trim();
+    const trimmed = (
+      await generateText({
+        model: createWorkersAI({ binding: ai })(MODEL),
+        maxRetries: 0,
+        instructions: system,
+        messages: [{ role: "user", content: user }],
+      })
+    ).text.trim();
     if (trimmed.length === 0) {
       throw new Error("Workers AI returned an empty response");
     }
@@ -242,10 +231,11 @@ export async function summarizeWindow(
   summarize: SummaryDeps["summarize"],
   messages: TranscriptMessage[],
 ): Promise<string> {
-  const lines = messages.map(
-    (message) => `[${formatTime(message.timestamp)}] ${message.authorName}: ${message.content}`,
+  const chunks = chunkTranscript(
+    messages.map(
+      (message) => `[${formatTime(message.timestamp)}] ${message.authorName}: ${message.content}`,
+    ),
   );
-  const chunks = chunkTranscript(lines);
   const single = chunks[0];
   if (chunks.length === 1 && single) {
     return summarize(FINAL_PROMPT, single.join("\n"));
@@ -255,8 +245,10 @@ export async function summarizeWindow(
   for (const chunk of chunks) {
     partials.push(await summarize(MAP_PROMPT, chunk.join("\n")));
   }
-  const merged = partials.map((partial, index) => `Parte ${index + 1}:\n${partial}`).join("\n\n");
-  return summarize(MERGE_PROMPT, merged);
+  return summarize(
+    MERGE_PROMPT,
+    partials.map((partial, index) => `Parte ${index + 1}:\n${partial}`).join("\n\n"),
+  );
 }
 
 function statusOf(error: unknown): number | undefined {
@@ -365,9 +357,16 @@ async function processChannel(
     }
 
     try {
-      const summary = await summarizeWindow(deps.summarize, windowMessages);
       await deps.rest.post(Routes.channelMessages(channel.channelId), {
-        body: { content: SUMMARY_CONTENT, embeds: [buildSummaryEmbed(summary, windowMessages)] },
+        body: {
+          content: SUMMARY_CONTENT,
+          embeds: [
+            buildSummaryEmbed(
+              await summarizeWindow(deps.summarize, windowMessages),
+              windowMessages,
+            ),
+          ],
+        },
       });
     } catch (error) {
       await handleWindowFailure(env, channel, lastMessage.id, error);
@@ -386,7 +385,7 @@ async function processChannel(
   return posted;
 }
 
-export async function runSummaryPoll(env: Env, deps: SummaryDeps): Promise<SummaryPollResult> {
+export async function runSummaryPoll(env: Env, deps: SummaryDeps) {
   const channels = await listSummaryChannels(env.DB);
   let processed = 0;
   for (const channel of channels) {

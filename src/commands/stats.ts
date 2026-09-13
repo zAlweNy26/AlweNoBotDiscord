@@ -28,13 +28,16 @@ export const statsCommand: Command = {
     const start = Date.now();
     await rest.get(Routes.currentApplication());
     const latency = Date.now() - start;
-    const guilds = (await rest.get(Routes.userGuilds())) as APIUnavailableGuild[];
     return embedResponse({
       color: SUCCESS_COLOR,
       title: "📊 Statistiche",
       fields: [
         { name: "Latenza API", value: `${latency} ms`, inline: true },
-        { name: "Server", value: String(guilds.length), inline: true },
+        {
+          name: "Server",
+          value: String(((await rest.get(Routes.userGuilds())) as APIUnavailableGuild[]).length),
+          inline: true,
+        },
         { name: "Uptime worker", value: formatUptime(Date.now() - startedAt), inline: true },
       ],
     });

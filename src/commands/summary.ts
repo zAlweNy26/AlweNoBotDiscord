@@ -34,8 +34,9 @@ function clamp(value: number, min: number, max: number): number {
 function getSubcommand(
   interaction: Parameters<Command["execute"]>[0]["interaction"],
 ): APIApplicationCommandInteractionDataSubcommandOption | undefined {
-  const option = interaction.data.options?.[0];
-  return option?.type === ApplicationCommandOptionType.Subcommand ? option : undefined;
+  return interaction.data.options?.[0]?.type === ApplicationCommandOptionType.Subcommand
+    ? interaction.data.options?.[0]
+    : undefined;
 }
 
 function getSubOption(
@@ -142,10 +143,12 @@ export const summaryCommand: Command = {
 
         let baseline = "0";
         try {
-          const newest = (await rest.get(Routes.channelMessages(channelId), {
-            query: new URLSearchParams({ limit: "1" }),
-          })) as APIMessage[];
-          baseline = newest[0]?.id ?? "0";
+          baseline =
+            (
+              (await rest.get(Routes.channelMessages(channelId), {
+                query: new URLSearchParams({ limit: "1" }),
+              })) as APIMessage[]
+            )[0]?.id ?? "0";
         } catch (error) {
           console.error(`Failed to read baseline for channel ${channelId}`, error);
           return ephemeralError(
@@ -164,8 +167,7 @@ export const summaryCommand: Command = {
         if (!channelId) {
           return ephemeralError("Invalid channel.");
         }
-        const existing = await getSummaryChannel(env.DB, guildId, channelId);
-        if (!existing) {
+        if (!(await getSummaryChannel(env.DB, guildId, channelId))) {
           return ephemeralEmbed({
             color: SUCCESS_COLOR,
             description: `No summarization is configured for <#${channelId}>.`,
@@ -201,25 +203,26 @@ export const summaryCommand: Command = {
             description: "No summarization configured.",
           });
         }
-        const lines = await Promise.all(
-          rows.map(async (row) => {
-            try {
-              const status = await getSummaryStatus(rest, row);
-              const progress = `${status.counted} / ${row.threshold} messages`;
-              if (status.ready) {
-                return `<#${row.channelId}> — ${progress} · ready`;
-              }
-              return `<#${row.channelId}> — ${progress} · ${row.threshold - status.counted} to go`;
-            } catch (error) {
-              console.error(`Failed to read status for channel ${row.channelId}`, error);
-              return `<#${row.channelId}> — couldn't read channel`;
-            }
-          }),
-        );
         return ephemeralEmbed({
           color: SUCCESS_COLOR,
           title: "📝 Summary status",
-          description: lines.join("\n"),
+          description: (
+            await Promise.all(
+              rows.map(async (row) => {
+                try {
+                  const status = await getSummaryStatus(rest, row);
+                  const progress = `${status.counted} / ${row.threshold} messages`;
+                  if (status.ready) {
+                    return `<#${row.channelId}> — ${progress} · ready`;
+                  }
+                  return `<#${row.channelId}> — ${progress} · ${row.threshold - status.counted} to go`;
+                } catch (error) {
+                  console.error(`Failed to read status for channel ${row.channelId}`, error);
+                  return `<#${row.channelId}> — couldn't read channel`;
+                }
+              }),
+            )
+          ).join("\n"),
         });
       }
       case "manual": {
@@ -232,22 +235,29 @@ export const summaryCommand: Command = {
           "messages",
           ApplicationCommandOptionType.Integer,
         );
-        const amount =
-          typeof requested === "number"
-            ? clamp(requested, MIN_THRESHOLD, MAX_THRESHOLD)
-            : MIN_THRESHOLD;
-
         return runDeferred(context, async () => {
           try {
-            const summarize = createSummarizer(env.AI);
-            const messages = await fetchRecentHumans(rest, channelId, amount);
+            const messages = await fetchRecentHumans(
+              rest,
+              channelId,
+              typeof requested === "number"
+                ? clamp(requested, MIN_THRESHOLD, MAX_THRESHOLD)
+                : MIN_THRESHOLD,
+            );
             if (messages.length === 0) {
               return {
                 embeds: [{ color: ERROR_COLOR, description: "No messages found to summarize." }],
               };
             }
-            const summary = await summarizeWindow(summarize, messages);
-            return { content: "#summary", embeds: [buildSummaryEmbed(summary, messages)] };
+            return {
+              content: "#summary",
+              embeds: [
+                buildSummaryEmbed(
+                  await summarizeWindow(createSummarizer(env.AI), messages),
+                  messages,
+                ),
+              ],
+            };
           } catch (error) {
             console.error(`Manual summary failed for channel ${channelId}`, error);
             return {

@@ -1,8 +1,4 @@
-import type {
-  APIChatInputApplicationCommandInteraction,
-  APIInteractionDataResolvedGuildMember,
-  APIUser,
-} from "discord-api-types/v10";
+import type { APIChatInputApplicationCommandInteraction } from "discord-api-types/v10";
 import { ApplicationCommandOptionType } from "discord-api-types/v10";
 
 type Interaction = APIChatInputApplicationCommandInteraction;
@@ -31,12 +27,7 @@ export function getRoleOption(interaction: Interaction, name: string): string | 
   return option?.type === ApplicationCommandOptionType.Role ? option.value : undefined;
 }
 
-export interface ResolvedUser {
-  user: APIUser;
-  member?: APIInteractionDataResolvedGuildMember;
-}
-
-export function getUserOption(interaction: Interaction, name: string): ResolvedUser | undefined {
+export function getUserOption(interaction: Interaction, name: string) {
   const option = findOption(interaction, name);
   if (!option || option.type !== ApplicationCommandOptionType.User) return undefined;
   const user = interaction.data.resolved?.users?.[option.value];

@@ -29,12 +29,12 @@ export const clearCommand: Command = {
     if (amount === undefined) {
       return ephemeralError("Specifica il numero di messaggi da eliminare.");
     }
-    const messages = (await rest.get(Routes.channelMessages(interaction.channel_id), {
-      query: new URLSearchParams({ limit: String(amount) }),
-    })) as APIMessage[];
-    const now = Date.now();
-    const ids = messages
-      .filter((message) => now - Date.parse(message.timestamp) < TWO_WEEKS_MS)
+    const ids = (
+      (await rest.get(Routes.channelMessages(interaction.channel_id), {
+        query: new URLSearchParams({ limit: String(amount) }),
+      })) as APIMessage[]
+    )
+      .filter((message) => Date.now() - Date.parse(message.timestamp) < TWO_WEEKS_MS)
       .map((message) => message.id);
     if (ids.length === 0) {
       return ephemeralError("Non ci sono messaggi recenti da eliminare.");

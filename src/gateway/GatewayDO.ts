@@ -87,11 +87,12 @@ export class GatewayDO {
       }
       this.summaryPollRunning = true;
       try {
-        const result = await runSummaryPoll(this.env, {
-          rest: this.rest,
-          summarize: createSummarizer(this.env.AI),
-        });
-        return Response.json(result);
+        return Response.json(
+          await runSummaryPoll(this.env, {
+            rest: this.rest,
+            summarize: createSummarizer(this.env.AI),
+          }),
+        );
       } finally {
         this.summaryPollRunning = false;
       }
@@ -158,8 +159,9 @@ export class GatewayDO {
   private async handleMessage(raw: unknown): Promise<void> {
     let payload: GatewayMessage;
     try {
-      const text = typeof raw === "string" ? raw : new TextDecoder().decode(raw as ArrayBuffer);
-      payload = JSON.parse(text) as GatewayMessage;
+      payload = JSON.parse(
+        typeof raw === "string" ? raw : new TextDecoder().decode(raw as ArrayBuffer),
+      ) as GatewayMessage;
     } catch {
       return;
     }
@@ -264,25 +266,26 @@ export class GatewayDO {
       const settings = await getGuildSettings(this.env.DB, event.guild_id);
       if (!settings) return;
       const memberCount = await this.fetchMemberCount(event.guild_id);
-      const enabled = kind === "welcome" ? settings.welcomeEnabled : settings.farewellEnabled;
       const channelId = kind === "welcome" ? settings.welcomeChannelId : settings.farewellChannelId;
-      const template =
-        (kind === "welcome" ? settings.welcomeMessage : settings.farewellMessage) ??
-        (kind === "welcome" ? DEFAULT_WELCOME_MESSAGE : DEFAULT_FAREWELL_MESSAGE);
 
-      if (enabled && channelId) {
+      if ((kind === "welcome" ? settings.welcomeEnabled : settings.farewellEnabled) && channelId) {
         await this.rest.post(Routes.channelMessages(channelId), {
-          body: { content: fillMessage(template, event.user, memberCount) },
+          body: {
+            content: fillMessage(
+              (kind === "welcome" ? settings.welcomeMessage : settings.farewellMessage) ??
+                (kind === "welcome" ? DEFAULT_WELCOME_MESSAGE : DEFAULT_FAREWELL_MESSAGE),
+              event.user,
+              memberCount,
+            ),
+          },
         });
       }
 
       if (settings.counterEnabled && settings.counterChannelId) {
-        const counterName = fillMessage(
-          settings.counterFormat ?? DEFAULT_COUNTER_FORMAT,
-          event.user,
-          memberCount,
+        await this.updateCounter(
+          settings.counterChannelId,
+          fillMessage(settings.counterFormat ?? DEFAULT_COUNTER_FORMAT, event.user, memberCount),
         );
-        await this.updateCounter(settings.counterChannelId, counterName);
       }
     } catch (error) {
       console.error(`Failed to handle ${kind} for guild ${event.guild_id}`, error);
@@ -290,10 +293,11 @@ export class GatewayDO {
   }
 
   private async fetchMemberCount(guildId: string): Promise<number | undefined> {
-    const guild = (await this.rest.get(Routes.guild(guildId), {
-      query: new URLSearchParams({ with_counts: "true" }),
-    })) as GuildWithCounts;
-    return guild.approximate_member_count;
+    return (
+      (await this.rest.get(Routes.guild(guildId), {
+        query: new URLSearchParams({ with_counts: "true" }),
+      })) as GuildWithCounts
+    ).approximate_member_count;
   }
 
   private async updateCounter(channelId: string, name: string): Promise<void> {

@@ -14,19 +14,17 @@ export const helpCommand: Command = {
   data: new SlashCommandBuilder().setName("help").setDescription("Mostra l'elenco dei comandi"),
 
   execute() {
-    const fields = (Object.keys(CATEGORY_LABELS) as CommandCategory[]).map((category) => ({
-      name: CATEGORY_LABELS[category],
-      value:
-        commands
-          .filter((command) => command.category === category)
-          .map((command) => `\`/${command.data.name}\``)
-          .join(" ") || "—",
-    }));
-
     return embedResponse({
       color: SUCCESS_COLOR,
       title: "📖 Comandi disponibili",
-      fields,
+      fields: (Object.keys(CATEGORY_LABELS) as CommandCategory[]).map((category) => ({
+        name: CATEGORY_LABELS[category],
+        value:
+          commands
+            .filter((command) => command.category === category)
+            .map((command) => `\`/${command.data.name}\``)
+            .join(" ") || "—",
+      })),
     });
   },
 };

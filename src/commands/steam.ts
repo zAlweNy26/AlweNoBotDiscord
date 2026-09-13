@@ -59,8 +59,7 @@ function formatHours(minutes: number): string {
 }
 
 async function steamGet<T>(path: string, key: string): Promise<T> {
-  const separator = path.includes("?") ? "&" : "?";
-  return fetchJson<T>(`${API_BASE}${path}${separator}key=${key}`);
+  return fetchJson<T>(`${API_BASE}${path}${path.includes("?") ? "&" : "?"}key=${key}`);
 }
 
 export const steamCommand: Command = {
@@ -126,11 +125,12 @@ export const steamCommand: Command = {
           steamId = resolved.response.steamid;
         }
 
-        const summaries = await steamGet<PlayerSummariesResponse>(
-          `/ISteamUser/GetPlayerSummaries/v0002/?steamids=${steamId}`,
-          key,
-        );
-        const player = summaries.response.players[0];
+        const player = (
+          await steamGet<PlayerSummariesResponse>(
+            `/ISteamUser/GetPlayerSummaries/v0002/?steamids=${steamId}`,
+            key,
+          )
+        ).response.players[0];
         if (!player) {
           return {
             embeds: [

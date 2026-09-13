@@ -1,5 +1,4 @@
 import { SlashCommandBuilder } from "@discordjs/builders";
-import type { APIEmbedField } from "discord-api-types/v10";
 import { fetchJson } from "../lib/http";
 import { describeWeatherCode } from "../lib/weather";
 import { ERROR_COLOR, SUCCESS_COLOR } from "../respond";
@@ -43,10 +42,11 @@ export const weatherCommand: Command = {
     runDeferred(context, async () => {
       const place = getStringOption(context.interaction, "luogo") ?? "";
 
-      const geocoding = await fetchJson<GeocodingResponse>(
-        `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(place)}&count=1&language=it&format=json`,
-      );
-      const location = geocoding.results?.[0];
+      const location = (
+        await fetchJson<GeocodingResponse>(
+          `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(place)}&count=1&language=it&format=json`,
+        )
+      ).results?.[0];
       if (!location) {
         return {
           embeds: [{ color: ERROR_COLOR, description: `Nessun risultato per **${place}**.` }],
@@ -58,25 +58,27 @@ export const weatherCommand: Command = {
       );
       const current = forecast.current;
 
-      const fields: APIEmbedField[] = [
-        { name: "Coordinate", value: `${location.latitude}, ${location.longitude}`, inline: true },
-        { name: "Fuso orario", value: forecast.timezone, inline: true },
-        { name: "Temperatura", value: `${current.temperature_2m} °C`, inline: true },
-        { name: "Tempo", value: describeWeatherCode(current.weather_code), inline: true },
-        { name: "Vento", value: `${current.wind_speed_10m} km/h`, inline: true },
-        { name: "Umidità", value: `${current.relative_humidity_2m}%`, inline: true },
-      ];
-
-      const locationName = [location.name, location.admin1, location.country]
-        .filter((part): part is string => Boolean(part))
-        .join(", ");
-
       return {
         embeds: [
           {
             color: SUCCESS_COLOR,
-            author: { name: `Info su ${locationName}` },
-            fields,
+            author: {
+              name: `Info su ${[location.name, location.admin1, location.country]
+                .filter((part): part is string => Boolean(part))
+                .join(", ")}`,
+            },
+            fields: [
+              {
+                name: "Coordinate",
+                value: `${location.latitude}, ${location.longitude}`,
+                inline: true,
+              },
+              { name: "Fuso orario", value: forecast.timezone, inline: true },
+              { name: "Temperatura", value: `${current.temperature_2m} °C`, inline: true },
+              { name: "Tempo", value: describeWeatherCode(current.weather_code), inline: true },
+              { name: "Vento", value: `${current.wind_speed_10m} km/h`, inline: true },
+              { name: "Umidità", value: `${current.relative_humidity_2m}%`, inline: true },
+            ],
           },
         ],
       };

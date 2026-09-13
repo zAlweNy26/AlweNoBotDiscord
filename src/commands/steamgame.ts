@@ -89,8 +89,7 @@ export const steamgameCommand: Command = {
       option.setName("query").setDescription("Nome del gioco o appid").setRequired(true),
     ),
   async execute(context) {
-    const { interaction } = context;
-    const query = getStringOption(interaction, "query")?.trim();
+    const query = getStringOption(context.interaction, "query")?.trim();
     if (!query) {
       return {
         type: 4,
@@ -103,10 +102,11 @@ export const steamgameCommand: Command = {
       if (/^\d+$/.test(query)) {
         appid = Number(query);
       } else {
-        const search = await fetchJson<StoreSearchResponse>(
-          `https://store.steampowered.com/api/storesearch/?term=${encodeURIComponent(query)}&l=italian&cc=it`,
-        );
-        appid = search.items?.[0]?.id;
+        appid = (
+          await fetchJson<StoreSearchResponse>(
+            `https://store.steampowered.com/api/storesearch/?term=${encodeURIComponent(query)}&l=italian&cc=it`,
+          )
+        ).items?.[0]?.id;
       }
       if (!appid) {
         return error(`❌ Nessun gioco trovato per **${query}**.`);
@@ -163,22 +163,30 @@ export const steamgameCommand: Command = {
         name: "Editore/i",
         value: data.publishers?.join(", ") || "n/d",
       });
-      const platforms = [
-        data.platforms.windows ? "Windows" : null,
-        data.platforms.mac ? "macOS" : null,
-        data.platforms.linux ? "Linux" : null,
-      ].filter((platform): platform is string => platform !== null);
-      fields.push({ name: "Piattaforme", value: platforms.join(", ") || "n/d" });
+      fields.push({
+        name: "Piattaforme",
+        value:
+          [
+            data.platforms.windows ? "Windows" : null,
+            data.platforms.mac ? "macOS" : null,
+            data.platforms.linux ? "Linux" : null,
+          ]
+            .filter((platform): platform is string => platform !== null)
+            .join(", ") || "n/d",
+      });
       fields.push({ name: "Data di uscita", value: data.release_date?.date ?? "n/d" });
 
-      const embed: APIEmbed = {
-        color: TYPE_COLORS[data.type] ?? SUCCESS_COLOR,
-        title: data.name,
-        url: `https://store.steampowered.com/app/${appid}`,
-        thumbnail: { url: data.header_image },
-        fields,
+      return {
+        embeds: [
+          {
+            color: TYPE_COLORS[data.type] ?? SUCCESS_COLOR,
+            title: data.name,
+            url: `https://store.steampowered.com/app/${appid}`,
+            thumbnail: { url: data.header_image },
+            fields,
+          },
+        ],
       };
-      return { embeds: [embed] };
     });
   },
 };

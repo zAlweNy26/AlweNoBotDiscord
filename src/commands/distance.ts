@@ -68,17 +68,14 @@ export const distanceCommand: Command = {
       const to = getStringOption(context.interaction, "destinazione") ?? "";
       const mode =
         TRAVEL_MODES[getStringOption(context.interaction, "mezzo") ?? "auto"] ?? "Driving";
-      const optimization =
-        OPTIMIZATIONS[getStringOption(context.interaction, "output") ?? "tempo"] ?? "time";
-
-      const url =
-        `https://dev.virtualearth.net/REST/V1/Routes/${mode}` +
-        `?wp.0=${encodeURIComponent(from)}&wp.1=${encodeURIComponent(to)}` +
-        `&optmz=${optimization}&output=json&key=${encodeURIComponent(key)}`;
 
       let data: BingResponse;
       try {
-        data = await fetchJson<BingResponse>(url);
+        data = await fetchJson<BingResponse>(
+          `https://dev.virtualearth.net/REST/V1/Routes/${mode}` +
+            `?wp.0=${encodeURIComponent(from)}&wp.1=${encodeURIComponent(to)}` +
+            `&optmz=${OPTIMIZATIONS[getStringOption(context.interaction, "output") ?? "tempo"] ?? "time"}&output=json&key=${encodeURIComponent(key)}`,
+        );
       } catch (fetchError) {
         console.error("Bing Maps request failed", fetchError);
         return error("Servizio momentaneamente non disponibile, riprova più tardi.");
