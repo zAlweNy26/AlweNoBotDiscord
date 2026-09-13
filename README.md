@@ -22,13 +22,13 @@ through Drizzle ORM. There is no always-on process and no `discord.js` client.
 
 ```
 src/
-  index.ts              Worker fetch/scheduled entry, interaction verification
+  index.ts              Worker fetch/scheduled/queue entry, interaction verification
   router.ts             interaction router (commands + message components)
   respond.ts            response helpers (embeds, ephemeral replies)
   verify.ts             Ed25519 interaction signature verification
   db.ts                 Drizzle queries for guild settings, role buttons and summary channels
   schema.ts             Drizzle schema
-  summary.ts            cron poller: summarizes watched channels with Workers AI
+  summary.ts            cron poller and manual summary worker (Workers AI)
   commands/             one file per slash command + registry/index
   gateway/GatewayDO.ts  Durable Object holding the Discord gateway
   gateway/messages.ts   message template helpers ({{utente}}, {{membri}})
@@ -68,8 +68,9 @@ BING_MAPS_KEY=
 1. `bunx wrangler d1 create alwenobot` and put the id into `wrangler.jsonc` (already configured here)
 2. `bun run d1:migrate:remote`
 3. Set secrets: `bunx wrangler secret put DISCORD_TOKEN`, repeat for the other secrets
-4. `bun run deploy` — deploys the Worker and registers the global slash commands
-5. In the Discord Developer Portal:
+4. `bunx wrangler queues create alwenobot-summary` (one-time; the queue consumer requires it)
+5. `bun run deploy` — deploys the Worker and registers the global slash commands
+6. In the Discord Developer Portal:
    - set the Interactions Endpoint URL to `https://<worker>.<subdomain>.workers.dev/interactions`
    - enable the **Server Members Intent** (required for welcome/farewell/counter)
    - enable the **Message Content Intent** (required for `/summary`)
@@ -85,6 +86,7 @@ BING_MAPS_KEY=
 ## Notes
 
 - The privileged **Message Content Intent** must be enabled for `/summary`: without it, the Discord API returns empty `content` for channel history. The AI summaries run on Workers AI (`AI` binding) with `@cf/zai-org/glm-4.7-flash`.
+- `/summary manual` is processed through Cloudflare Queues (`alwenobot_summary`): the deferred reply is patched as soon as the summary is ready, so long channel scans never hit the interaction timeout. Automatic summaries are unchanged.
 - Automatic summaries start with `@here #summary` in the message content. The `@here` ping requires the **Mention @everyone, @here and all roles** permission (without it the mention is posted without notifying). Search `summary` (or `#summary`) to list past summaries.
 - The member counter channel rename is debounced (10 minutes) to stay well inside Discord rate limits.
 - Legacy `steam_countries.min.json` was replaced by the `src/lib/countries.ts` map; the counter format supports `{{membri}}`.

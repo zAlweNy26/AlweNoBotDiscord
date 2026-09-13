@@ -7,6 +7,7 @@ import {
   type SummaryChannel,
   updateSummaryProgress,
 } from "./db";
+import { ERROR_COLOR } from "./respond";
 
 const MODEL = "@cf/zai-org/glm-4.7-flash";
 const SUMMARY_TITLE = "📝 Riepilogo";
@@ -395,4 +396,56 @@ export async function runSummaryPoll(env: Env, deps: SummaryDeps) {
     }
   }
   return { channels: channels.length, processed };
+}
+
+export interface ManualSummaryMessage {
+  channelId: string;
+  needed: number;
+  token: string;
+}
+
+export interface ManualSummaryBody {
+  content?: string;
+  embeds?: APIEmbed[];
+}
+
+export interface ManualSummaryDeps extends SummaryDeps {
+  applicationId: string;
+}
+
+export async function runManualSummary(
+  deps: SummaryDeps,
+  channelId: string,
+  needed: number,
+): Promise<ManualSummaryBody> {
+  try {
+    const messages = await fetchRecentHumans(deps.rest, channelId, needed);
+    if (messages.length === 0) {
+      return { embeds: [{ color: ERROR_COLOR, description: "No messages found to summarize." }] };
+    }
+    return {
+      content: "#summary",
+      embeds: [buildSummaryEmbed(await summarizeWindow(deps.summarize, messages), messages)],
+    };
+  } catch (error) {
+    console.error(`Manual summary failed for channel ${channelId}`, error);
+    return {
+      embeds: [
+        {
+          color: ERROR_COLOR,
+          description: "Couldn't create the summary. Please try again later.",
+        },
+      ],
+    };
+  }
+}
+
+export async function deliverManualSummary(
+  deps: ManualSummaryDeps,
+  message: ManualSummaryMessage,
+): Promise<void> {
+  const body = await runManualSummary(deps, message.channelId, message.needed);
+  await deps.rest.patch(Routes.webhookMessage(deps.applicationId, message.token, "@original"), {
+    body,
+  });
 }

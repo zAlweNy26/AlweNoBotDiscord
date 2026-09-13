@@ -2,6 +2,12 @@ import { type APIInteraction, InteractionType, REST } from "discord.js";
 import { GatewayDO } from "./gateway/GatewayDO";
 import { ephemeralError } from "./respond";
 import { routeInteraction } from "./router";
+import {
+  createSummarizer,
+  deliverManualSummary,
+  type ManualSummaryDeps,
+  type ManualSummaryMessage,
+} from "./summary";
 import { verifyDiscordSignature } from "./verify";
 
 export { GatewayDO };
@@ -44,6 +50,21 @@ async function handleInteractions(
   }
 }
 
+export async function handleManualSummaryBatch(
+  batch: MessageBatch<ManualSummaryMessage>,
+  deps: ManualSummaryDeps,
+): Promise<void> {
+  for (const message of batch.messages) {
+    try {
+      await deliverManualSummary(deps, message.body);
+      message.ack();
+    } catch (error) {
+      console.error(`Manual summary delivery failed for channel ${message.body.channelId}`, error);
+      message.retry();
+    }
+  }
+}
+
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const { pathname } = new URL(request.url);
@@ -61,4 +82,12 @@ export default {
     await stub.fetch("https://gateway.internal/ensure");
     await stub.fetch("https://gateway.internal/summary-poll");
   },
-} satisfies ExportedHandler<Env>;
+
+  async queue(batch: MessageBatch<ManualSummaryMessage>, env: Env): Promise<void> {
+    await handleManualSummaryBatch(batch, {
+      rest: new REST({ version: "10" }).setToken(env.DISCORD_TOKEN),
+      summarize: createSummarizer(env.AI),
+      applicationId: env.DISCORD_APPLICATION_ID,
+    });
+  },
+} satisfies ExportedHandler<Env, ManualSummaryMessage>;

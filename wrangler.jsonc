@@ -37,6 +37,21 @@
   "ai": {
     "binding": "AI"
   },
+  "queues": {
+    "producers": [
+      {
+        "queue": "alwenobot-summary",
+        "binding": "alwenobot_summary"
+      }
+    ],
+    "consumers": [
+      {
+        "queue": "alwenobot-summary",
+        "max_batch_size": 1,
+        "max_retries": 3
+      }
+    ]
+  },
   "routes": [
     {
       "pattern": "discord.danyalwe.me",

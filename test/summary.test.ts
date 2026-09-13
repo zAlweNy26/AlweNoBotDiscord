@@ -1,13 +1,16 @@
 import { env } from "cloudflare:test";
-import type { APIEmbed, APIMessage, REST } from "discord.js";
+import { type APIEmbed, type APIMessage, type REST, Routes } from "discord.js";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { addSummaryChannel, getSummaryChannel, updateSummaryProgress } from "../src/db";
 import {
   buildSummaryEmbed,
   chunkTranscript,
   createSummarizer,
+  deliverManualSummary,
   fetchRecentHumans,
   getSummaryStatus,
+  type ManualSummaryDeps,
+  runManualSummary,
   runSummaryPoll,
   type SummaryDeps,
 } from "../src/summary";
@@ -343,5 +346,76 @@ describe("getSummaryStatus", () => {
     if (!row) throw new Error("missing config");
 
     await expect(getSummaryStatus(rest, row)).rejects.toThrow("Missing Access");
+  });
+});
+
+describe("runManualSummary", () => {
+  it("posts the summary body for the latest humans", async () => {
+    const { rest } = createRest([
+      { id: "1", content: "first" },
+      { id: "2", content: "second" },
+    ]);
+
+    const body = await runManualSummary(deps(rest, createSummarize()), "channel", 10);
+
+    expect(body.content).toBe("#summary");
+    expect(body.embeds?.[0]?.description).toBe("riassunto");
+  });
+
+  it("reports when there is nothing to summarize", async () => {
+    const { rest } = createRest([]);
+
+    const body = await runManualSummary(deps(rest, createSummarize()), "channel", 10);
+
+    expect(body.embeds?.[0]?.description).toBe("No messages found to summarize.");
+  });
+
+  it("reports when summarization fails", async () => {
+    const { rest } = createRest([{ id: "1", content: "first" }]);
+    const summarize = vi.fn(async () => {
+      throw new Error("ai down");
+    });
+
+    const body = await runManualSummary(deps(rest, summarize), "channel", 10);
+
+    expect(body.embeds?.[0]?.description).toBe(
+      "Couldn't create the summary. Please try again later.",
+    );
+  });
+});
+
+describe("deliverManualSummary", () => {
+  function deliveryDeps(
+    messages: FakeMessage[],
+    patch: (route: string, options: unknown) => Promise<unknown>,
+  ): ManualSummaryDeps {
+    const { rest } = createRest(messages);
+    return {
+      rest: { get: rest.get, post: rest.post, patch } as unknown as REST,
+      summarize: createSummarize(),
+      applicationId: "app",
+    };
+  }
+
+  it("patches the deferred interaction response", async () => {
+    const patch = vi.fn(async () => ({}));
+    const manualDeps = deliveryDeps([{ id: "1", content: "first" }], patch);
+
+    await deliverManualSummary(manualDeps, { channelId: "channel", needed: 10, token: "token" });
+
+    expect(patch).toHaveBeenCalledWith(Routes.webhookMessage("app", "token", "@original"), {
+      body: expect.objectContaining({ content: "#summary" }),
+    });
+  });
+
+  it("propagates patch failures", async () => {
+    const patch = vi.fn(async () => {
+      throw new Error("patch failed");
+    });
+    const manualDeps = deliveryDeps([{ id: "1", content: "first" }], patch);
+
+    await expect(
+      deliverManualSummary(manualDeps, { channelId: "channel", needed: 10, token: "token" }),
+    ).rejects.toThrow("patch failed");
   });
 });

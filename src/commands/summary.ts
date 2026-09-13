@@ -12,15 +12,8 @@ import {
   listSummaryChannelsForGuild,
   removeSummaryChannel,
 } from "../db";
-import { ERROR_COLOR, ephemeralEmbed, ephemeralError, SUCCESS_COLOR } from "../respond";
-import {
-  buildSummaryEmbed,
-  createSummarizer,
-  fetchRecentHumans,
-  getSummaryStatus,
-  summarizeWindow,
-} from "../summary";
-import { runDeferred } from "./deferred";
+import { deferredResponse, ephemeralEmbed, ephemeralError, SUCCESS_COLOR } from "../respond";
+import { getSummaryStatus } from "../summary";
 import type { Command } from "./types";
 
 const MIN_THRESHOLD = 10;
@@ -235,41 +228,17 @@ export const summaryCommand: Command = {
           "messages",
           ApplicationCommandOptionType.Integer,
         );
-        return runDeferred(context, async () => {
-          try {
-            const messages = await fetchRecentHumans(
-              rest,
-              channelId,
-              typeof requested === "number"
-                ? clamp(requested, MIN_THRESHOLD, MAX_THRESHOLD)
-                : MIN_THRESHOLD,
-            );
-            if (messages.length === 0) {
-              return {
-                embeds: [{ color: ERROR_COLOR, description: "No messages found to summarize." }],
-              };
-            }
-            return {
-              content: "#summary",
-              embeds: [
-                buildSummaryEmbed(
-                  await summarizeWindow(createSummarizer(env.AI), messages),
-                  messages,
-                ),
-              ],
-            };
-          } catch (error) {
-            console.error(`Manual summary failed for channel ${channelId}`, error);
-            return {
-              embeds: [
-                {
-                  color: ERROR_COLOR,
-                  description: "Couldn't create the summary. Please try again later.",
-                },
-              ],
-            };
-          }
-        });
+        const needed =
+          typeof requested === "number"
+            ? clamp(requested, MIN_THRESHOLD, MAX_THRESHOLD)
+            : MIN_THRESHOLD;
+        try {
+          await env.alwenobot_summary.send({ channelId, needed, token: interaction.token });
+        } catch (error) {
+          console.error(`Failed to queue manual summary for channel ${channelId}`, error);
+          return ephemeralError("Couldn't queue the summary. Please try again later.");
+        }
+        return deferredResponse();
       }
       default:
         return ephemeralError("Invalid subcommand.");
