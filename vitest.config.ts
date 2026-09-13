@@ -8,7 +8,11 @@ export default defineConfig(async () => {
       cloudflareTest({
         wrangler: { configPath: "./wrangler.jsonc" },
         miniflare: {
-          bindings: { TEST_MIGRATIONS: await readD1Migrations("./migrations") },
+          bindings: {
+            TEST_MIGRATIONS: await readD1Migrations("./migrations"),
+            SUMMARY_EVAL: process.env.SUMMARY_EVAL ?? "",
+            SUMMARY_EVAL_CONFIGS: process.env.SUMMARY_EVAL_CONFIGS ?? "",
+          },
         },
       }),
     ],
