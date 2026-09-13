@@ -12,8 +12,15 @@ import {
   listSummaryChannelsForGuild,
   removeSummaryChannel,
 } from "../db";
-import { ephemeralEmbed, ephemeralError, SUCCESS_COLOR } from "../respond";
-import { getSummaryStatus } from "../summary";
+import { ERROR_COLOR, ephemeralEmbed, ephemeralError, SUCCESS_COLOR } from "../respond";
+import {
+  buildSummaryEmbed,
+  createSummarizer,
+  fetchRecentHumans,
+  getSummaryStatus,
+  summarizeWindow,
+} from "../summary";
+import { runDeferred } from "./deferred";
 import type { Command } from "./types";
 
 const MIN_THRESHOLD = 10;
@@ -86,12 +93,28 @@ const data = new SlashCommandBuilder()
     subcommand
       .setName("status")
       .setDescription("Show how close each channel is to its next summary"),
+  )
+  .addSubcommand((subcommand) =>
+    subcommand
+      .setName("manual")
+      .setDescription("Summarize recent messages on demand")
+      .addIntegerOption((option) =>
+        option
+          .setName("messages")
+          .setDescription(
+            `How many recent messages to summarize (${MIN_THRESHOLD}-${MAX_THRESHOLD})`,
+          )
+          .setMinValue(MIN_THRESHOLD)
+          .setMaxValue(MAX_THRESHOLD)
+          .setRequired(true),
+      ),
   );
 
 export const summaryCommand: Command = {
   category: "Info",
   data,
-  async execute({ env, rest, interaction }) {
+  async execute(context) {
+    const { env, rest, interaction } = context;
     const guildId = interaction.guild_id;
     if (!guildId) {
       return ephemeralError("This command can only be used in a server.");
@@ -197,6 +220,45 @@ export const summaryCommand: Command = {
           color: SUCCESS_COLOR,
           title: "📝 Summary status",
           description: lines.join("\n"),
+        });
+      }
+      case "manual": {
+        const channelId = interaction.channel_id;
+        if (!channelId) {
+          return ephemeralError("Invalid channel.");
+        }
+        const requested = getSubOption(
+          subcommand,
+          "messages",
+          ApplicationCommandOptionType.Integer,
+        );
+        const amount =
+          typeof requested === "number"
+            ? clamp(requested, MIN_THRESHOLD, MAX_THRESHOLD)
+            : MIN_THRESHOLD;
+
+        return runDeferred(context, async () => {
+          try {
+            const summarize = createSummarizer(env.AI);
+            const messages = await fetchRecentHumans(rest, channelId, amount);
+            if (messages.length === 0) {
+              return {
+                embeds: [{ color: ERROR_COLOR, description: "No messages found to summarize." }],
+              };
+            }
+            const summary = await summarizeWindow(summarize, messages);
+            return { embeds: [buildSummaryEmbed(summary, messages)] };
+          } catch (error) {
+            console.error(`Manual summary failed for channel ${channelId}`, error);
+            return {
+              embeds: [
+                {
+                  color: ERROR_COLOR,
+                  description: "Couldn't create the summary. Please try again later.",
+                },
+              ],
+            };
+          }
         });
       }
       default:

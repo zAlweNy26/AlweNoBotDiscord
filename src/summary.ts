@@ -145,6 +145,44 @@ export async function getSummaryStatus(
   };
 }
 
+export async function fetchRecentHumans(
+  rest: REST,
+  channelId: string,
+  needed: number,
+  budget = SCAN_LIMIT,
+): Promise<TranscriptMessage[]> {
+  const humans: TranscriptMessage[] = [];
+  let before: string | undefined;
+  let scanned = 0;
+
+  while (humans.length < needed && scanned < budget) {
+    const query = new URLSearchParams({ limit: String(PAGE_LIMIT) });
+    if (before) {
+      query.set("before", before);
+    }
+    const page = (await rest.get(Routes.channelMessages(channelId), {
+      query,
+    })) as APIMessage[];
+    if (!Array.isArray(page) || page.length === 0) {
+      break;
+    }
+    scanned += page.length;
+    for (const message of page) {
+      if (isHumanMessage(message)) {
+        humans.push(toTranscriptMessage(message));
+      }
+    }
+    const oldest = page[page.length - 1];
+    if (!oldest || page.length < PAGE_LIMIT) {
+      break;
+    }
+    before = oldest.id;
+  }
+
+  humans.sort((a, b) => (BigInt(a.id) < BigInt(b.id) ? -1 : 1));
+  return humans.slice(-needed);
+}
+
 export function chunkTranscript(lines: string[], maxChars = CHUNK_CHARS): string[][] {
   const chunks: string[][] = [];
   let current: string[] = [];
@@ -199,7 +237,7 @@ export function createSummarizer(ai: Env["AI"]): SummaryDeps["summarize"] {
   };
 }
 
-async function summarizeWindow(
+export async function summarizeWindow(
   summarize: SummaryDeps["summarize"],
   messages: TranscriptMessage[],
 ): Promise<string> {

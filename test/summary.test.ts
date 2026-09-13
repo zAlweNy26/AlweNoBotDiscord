@@ -7,6 +7,7 @@ import {
   buildSummaryEmbed,
   chunkTranscript,
   createSummarizer,
+  fetchRecentHumans,
   getSummaryStatus,
   runSummaryPoll,
   type SummaryDeps,
@@ -34,8 +35,23 @@ function toApiMessage(message: FakeMessage): APIMessage {
 function createRest(messages: FakeMessage[]) {
   const posted: Array<{ body: { embeds: APIEmbed[] } }> = [];
   const get = vi.fn(async (_route: string, options: { query: URLSearchParams }) => {
-    const after = options.query.get("after") ?? "0";
     const limit = Number(options.query.get("limit") ?? "100");
+    const before = options.query.get("before");
+    if (before) {
+      return messages
+        .filter((message) => BigInt(message.id) < BigInt(before))
+        .sort((a, b) => (BigInt(a.id) > BigInt(b.id) ? -1 : 1))
+        .slice(0, limit)
+        .map(toApiMessage);
+    }
+    const after = options.query.get("after");
+    if (after === null) {
+      return messages
+        .slice()
+        .sort((a, b) => (BigInt(a.id) < BigInt(b.id) ? 1 : -1))
+        .slice(0, limit)
+        .map(toApiMessage);
+    }
     const page = messages
       .map((message, index) => ({ message, index }))
       .filter(({ message }) => BigInt(message.id) > BigInt(after))
@@ -98,6 +114,63 @@ describe("createSummarizer", () => {
 
     await expect(summarize("system", "user")).resolves.toBe("ciao");
     expect(run).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("fetchRecentHumans", () => {
+  it("collects the newest humans across pages, oldest first", async () => {
+    const messages: FakeMessage[] = Array.from({ length: 130 }, (_, index) => ({
+      id: String(index + 1),
+      content: `message ${index + 1}`,
+    }));
+    const { rest } = createRest(messages);
+
+    const humans = await fetchRecentHumans(rest, "channel", 120);
+
+    expect(humans).toHaveLength(120);
+    expect(humans[0]?.id).toBe("11");
+    expect(humans[119]?.id).toBe("130");
+  });
+
+  it("returns all available humans when the channel has fewer", async () => {
+    const { rest } = createRest([
+      { id: "1", content: "one" },
+      { id: "2", content: "two" },
+      { id: "3", content: "three" },
+    ]);
+
+    const humans = await fetchRecentHumans(rest, "channel", 10);
+
+    expect(humans.map((message) => message.id)).toEqual(["1", "2", "3"]);
+  });
+
+  it("ignores bots, webhooks and empty messages", async () => {
+    const { rest } = createRest([
+      { id: "1", content: "first" },
+      { id: "2", content: "bot", bot: true },
+      { id: "3", content: "second" },
+      { id: "4", content: "hook", webhook: true },
+      { id: "5", content: "   " },
+      { id: "6", content: "third" },
+    ]);
+
+    const humans = await fetchRecentHumans(rest, "channel", 3);
+
+    expect(humans.map((message) => message.id)).toEqual(["1", "3", "6"]);
+  });
+
+  it("stops at the scan budget", async () => {
+    const messages: FakeMessage[] = Array.from({ length: 150 }, (_, index) => ({
+      id: String(index + 1),
+      content: `message ${index + 1}`,
+    }));
+    const { rest } = createRest(messages);
+
+    const humans = await fetchRecentHumans(rest, "channel", 150, 50);
+
+    expect(humans).toHaveLength(100);
+    expect(humans[0]?.id).toBe("51");
+    expect(humans[99]?.id).toBe("150");
   });
 });
 
