@@ -12,6 +12,7 @@ import {
 const MODEL = "@cf/zai-org/glm-4.7-flash";
 const SUMMARY_TITLE = "📝 Riepilogo";
 const SUMMARY_COLOR = 0x5865f2;
+const SUMMARY_CONTENT = "@here #summary";
 const MAX_WINDOWS_PER_POLL = 3;
 const MAX_FAILURES = 3;
 const PAGE_LIMIT = 100;
@@ -366,7 +367,7 @@ async function processChannel(
     try {
       const summary = await summarizeWindow(deps.summarize, windowMessages);
       await deps.rest.post(Routes.channelMessages(channel.channelId), {
-        body: { embeds: [buildSummaryEmbed(summary, windowMessages)] },
+        body: { content: SUMMARY_CONTENT, embeds: [buildSummaryEmbed(summary, windowMessages)] },
       });
     } catch (error) {
       await handleWindowFailure(env, channel, lastMessage.id, error);

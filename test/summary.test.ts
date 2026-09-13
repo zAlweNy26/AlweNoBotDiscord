@@ -33,7 +33,7 @@ function toApiMessage(message: FakeMessage): APIMessage {
 }
 
 function createRest(messages: FakeMessage[]) {
-  const posted: Array<{ body: { embeds: APIEmbed[] } }> = [];
+  const posted: Array<{ body: { content?: string; embeds: APIEmbed[] } }> = [];
   const get = vi.fn(async (_route: string, options: { query: URLSearchParams }) => {
     const limit = Number(options.query.get("limit") ?? "100");
     const before = options.query.get("before");
@@ -61,10 +61,12 @@ function createRest(messages: FakeMessage[]) {
       .reverse();
     return page;
   });
-  const post = vi.fn(async (_route: string, options: { body: { embeds: APIEmbed[] } }) => {
-    posted.push(options);
-    return {};
-  });
+  const post = vi.fn(
+    async (_route: string, options: { body: { content?: string; embeds: APIEmbed[] } }) => {
+      posted.push(options);
+      return {};
+    },
+  );
   const rest = { get, post } as unknown as REST;
   return { rest, posted };
 }
@@ -211,6 +213,7 @@ describe("runSummaryPoll", () => {
 
     expect(result.processed).toBe(1);
     expect(posted).toHaveLength(1);
+    expect(posted[0]?.body.content).toBe("@here #summary");
     expect(posted[0]?.body.embeds[0]?.description).toBe("riassunto");
     expect((await getSummaryChannel(env.DB, "guild", "channel"))?.lastMessageId).toBe("101");
   });

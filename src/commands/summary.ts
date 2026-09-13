@@ -247,7 +247,7 @@ export const summaryCommand: Command = {
               };
             }
             const summary = await summarizeWindow(summarize, messages);
-            return { embeds: [buildSummaryEmbed(summary, messages)] };
+            return { content: "#summary", embeds: [buildSummaryEmbed(summary, messages)] };
           } catch (error) {
             console.error(`Manual summary failed for channel ${channelId}`, error);
             return {
