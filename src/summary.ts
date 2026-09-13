@@ -11,6 +11,7 @@ import { ERROR_COLOR } from "./respond";
 
 const MAX_FAILURES = 3;
 const AI_MAX_FAILURES = 10;
+const TRANSIENT_AI_CODES = new Set([3007, 3008, 3036, 3040, 3046]);
 const MAX_WINDOWS_PER_POLL = 3;
 const PAGE_LIMIT = 100;
 const SCAN_LIMIT = 2_000;
@@ -237,6 +238,7 @@ export function createSummarizer(ai: Env["AI"]) {
         model: createWorkersAI({ binding: ai })("@cf/zai-org/glm-5.3-flash"),
         maxRetries: 2,
         temperature: 0.2,
+        providerOptions: { "workers-ai": { reasoning_effort: "low" } },
         instructions: system,
         messages: [{ role: "user", content: user }],
       })
@@ -348,6 +350,10 @@ function workersAiErrorCodeOf(error: APICallError) {
       return code;
     }
   }
+  const match = /^(\d{3,5})\b/.exec(error.message);
+  if (match) {
+    return Number(match[1]);
+  }
   return undefined;
 }
 
@@ -355,20 +361,24 @@ function classifyAiFailure(error: unknown): AiFailure {
   if (!APICallError.isInstance(error)) {
     return { transient: false };
   }
+  const code = workersAiErrorCodeOf(error);
   return {
-    transient: error.isRetryable,
-    code: workersAiErrorCodeOf(error),
+    transient: error.isRetryable || (code !== undefined && TRANSIENT_AI_CODES.has(code)),
+    code,
     statusCode: error.statusCode,
   };
 }
 
-function aiFailureDetail(failure: AiFailure) {
+function aiFailureDetail(failure: AiFailure, error: unknown) {
   const parts: string[] = [];
   if (failure.code !== undefined) {
     parts.push(`code ${failure.code}`);
   }
   if (failure.statusCode !== undefined) {
     parts.push(`status ${failure.statusCode}`);
+  }
+  if (error instanceof Error && error.message.length > 0) {
+    parts.push(error.message);
   }
   return parts.length === 0 ? "" : ` (${parts.join(", ")})`;
 }
@@ -380,7 +390,7 @@ async function handleAiFailure(
   failure: AiFailure,
   error: unknown,
 ) {
-  const detail = aiFailureDetail(failure);
+  const detail = aiFailureDetail(failure, error);
   if (failure.transient) {
     console.warn(
       `Workers AI is temporarily unavailable for channel ${channel.channelId}${detail}, retrying next poll`,

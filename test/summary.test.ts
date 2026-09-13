@@ -119,6 +119,11 @@ describe("createSummarizer", () => {
 
     await expect(summarize("system", "user")).resolves.toBe("ciao");
     expect(run).toHaveBeenCalledTimes(1);
+    expect(run).toHaveBeenCalledWith(
+      "@cf/zai-org/glm-5.3-flash",
+      expect.objectContaining({ reasoning_effort: "low" }),
+      expect.anything(),
+    );
   });
 });
 
@@ -276,6 +281,31 @@ describe("runSummaryPoll", () => {
     expect(row?.lastMessageId).toBe("0");
     expect(row?.failureCount).toBe(0);
     expect(warn.mock.calls.flat().join(" ")).toContain("3040");
+    warn.mockRestore();
+  });
+
+  it("keeps the pointer for a Workers AI timeout without a status code", async () => {
+    await addSummaryChannel(env.DB, "guild", "channel", 2, "0");
+    const { rest, posted } = createRest([
+      { id: "100", content: "first" },
+      { id: "101", content: "second" },
+    ]);
+    const summarize = vi.fn(async () => {
+      throw new APICallError({
+        message: "3046: Request timeout",
+        url: "workers-ai:binding/run/@cf/zai-org/glm-5.3-flash",
+        requestBodyValues: {},
+      });
+    });
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    await runSummaryPoll(env as unknown as Env, deps(rest, summarize));
+
+    expect(posted).toHaveLength(0);
+    const row = await getSummaryChannel(env.DB, "guild", "channel");
+    expect(row?.lastMessageId).toBe("0");
+    expect(row?.failureCount).toBe(0);
+    expect(warn.mock.calls.flat().join(" ")).toContain("3046");
     warn.mockRestore();
   });
 
