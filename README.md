@@ -33,7 +33,6 @@ DISCORD_PUBLIC_KEY=
 OWNER_ID=
 STEAM_API_KEY=
 YOUTUBE_API_KEY=
-BING_MAPS_KEY=
 ```
 
 3. `bunx wrangler types` regenerates `worker-configuration.d.ts` after config changes
