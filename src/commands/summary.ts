@@ -227,7 +227,12 @@ export const summaryCommand: Command = {
             ? clamp(requested, MIN_THRESHOLD, MAX_THRESHOLD)
             : MIN_THRESHOLD;
         try {
-          await env.alwenobot_summary.send({ channelId, needed, token: interaction.token });
+          await env.alwenobot_summary.send({
+            guildId,
+            channelId,
+            needed,
+            token: interaction.token,
+          });
         } catch (error) {
           console.error(`Failed to queue manual summary for channel ${channelId}`, error);
           return ephemeralError("Couldn't queue the summary. Please try again later.");

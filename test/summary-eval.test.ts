@@ -2,16 +2,27 @@ import { env } from "cloudflare:test";
 import { generateText } from "ai";
 import { describe, it } from "vitest";
 import { createWorkersAI } from "workers-ai-provider";
-import { summarizeWindow, type TranscriptMessage } from "../src/summary";
+import {
+  SUMMARY_MODEL,
+  SUMMARY_PROMPTS,
+  SUMMARY_REQUEST,
+  type SummaryPrompts,
+  summarizeWindow,
+  type TranscriptMessage,
+} from "../src/summary";
 
 interface EvalConfig {
   label: string;
   model: string;
   temperature?: number;
   providerOptions?: NonNullable<Parameters<typeof generateText>[0]["providerOptions"]>;
+  prompts?: SummaryPrompts;
 }
 
+const PRODUCTION = { model: SUMMARY_MODEL, ...SUMMARY_REQUEST };
+
 const CONFIGS: EvalConfig[] = [
+  { label: "production", ...PRODUCTION, prompts: SUMMARY_PROMPTS },
   { label: "baseline", model: "@cf/zai-org/glm-4.7-flash" },
   { label: "temp02", model: "@cf/zai-org/glm-4.7-flash", temperature: 0.2 },
   { label: "glm-5.3-flash", model: "@cf/zai-org/glm-5.3-flash", temperature: 0.2 },
@@ -19,7 +30,7 @@ const CONFIGS: EvalConfig[] = [
   { label: "gpt-oss-120b", model: "@cf/openai/gpt-oss-120b", temperature: 0.2 },
 ];
 
-const TRAPS = [
+const TRAPS_IT = [
   "litigio",
   "matrimonio",
   "promozione",
@@ -32,6 +43,28 @@ const TRAPS = [
   "rissa",
 ];
 
+const TRAPS_EN = [
+  "argument",
+  "wedding",
+  "promotion",
+  "paris",
+  "flood",
+  "arrest",
+  "cheating",
+  "birthday",
+  "bachelor party",
+  "brawl",
+];
+
+const ENGLISH_MARKERS = [/\bthe\b/i, /\band\b/i, /\bwith\b/i, /\bthey\b/i, /\bwas\b/i];
+const ITALIAN_MARKERS = [/\bche\b/i, /\bnon\b/i, /\bper\b/i, /\bcon\b/i, /\buna\b/i];
+
+function detectLanguage(text: string) {
+  const english = ENGLISH_MARKERS.filter((marker) => marker.test(text)).length;
+  const italian = ITALIAN_MARKERS.filter((marker) => marker.test(text)).length;
+  return english > italian ? "en" : "it";
+}
+
 const evalEnv = env as unknown as { SUMMARY_EVAL?: string; SUMMARY_EVAL_CONFIGS?: string };
 const enabled = evalEnv.SUMMARY_EVAL === "1";
 const requested = (evalEnv.SUMMARY_EVAL_CONFIGS ?? "")
@@ -41,22 +74,17 @@ const requested = (evalEnv.SUMMARY_EVAL_CONFIGS ?? "")
 const selected =
   requested.length === 0 ? CONFIGS : CONFIGS.filter((c) => requested.includes(c.label));
 
-function makeSummarize(
-  ai: Env["AI"],
-  model: string,
-  temperature?: number,
-  providerOptions?: EvalConfig["providerOptions"],
-) {
+function makeSummarize(ai: Env["AI"], cfg: EvalConfig) {
   const workersai = createWorkersAI({ binding: ai });
   return async (system: string, user: string) => {
     const text = (
       await generateText({
-        model: workersai(model),
+        model: workersai(cfg.model),
         maxRetries: 2,
         instructions: system,
         messages: [{ role: "user", content: user }],
-        ...(temperature === undefined ? {} : { temperature }),
-        ...(providerOptions === undefined ? {} : { providerOptions }),
+        ...(cfg.temperature === undefined ? {} : { temperature: cfg.temperature }),
+        ...(cfg.providerOptions === undefined ? {} : { providerOptions: cfg.providerOptions }),
       })
     ).text.trim();
     if (text.length === 0) {
@@ -76,6 +104,8 @@ async function evalCase(
   caseName: string,
   messages: TranscriptMessage[],
   facts: string[],
+  trapWords: string[] = TRAPS_IT,
+  language: "it" | "en" = "it",
 ) {
   const rows: string[] = [];
   const outputs: string[] = [];
@@ -85,14 +115,17 @@ async function evalCase(
     const started = Date.now();
     try {
       const summary = await summarizeWindow(
-        makeSummarize((env as unknown as Env).AI, cfg.model, cfg.temperature, cfg.providerOptions),
+        makeSummarize((env as unknown as Env).AI, cfg),
         messages,
+        cfg.prompts,
       );
-      const traps = countMatches(summary, TRAPS);
+      const traps = countMatches(summary, trapWords);
       const covered = countMatches(summary, facts);
+      const detected = detectLanguage(summary);
+      const quoted = (summary.match(/["\u00ab\u00bb\u201c\u201d]/g) ?? []).length;
       successes += 1;
       rows.push(
-        `${cfg.label}\trun ${run}\t${Date.now() - started}ms\ttraps=${traps.length === 0 ? "none" : traps.join("|")}\tfacts=${covered.length}/${facts.length}\tchars=${summary.length}`,
+        `${cfg.label}\trun ${run}\t${Date.now() - started}ms\ttraps=${traps.length === 0 ? "none" : traps.join("|")}\tfacts=${covered.length}/${facts.length}\tlang=${detected}${detected === language ? "" : " DRIFT"}\tquotes=${quoted}\tchars=${summary.length}`,
       );
       outputs.push(`### ${cfg.label} / run ${run}\n${summary}`);
     } catch (error) {
@@ -125,6 +158,7 @@ function makeMessage(
   return {
     id: String(100 + index),
     timestamp: `2026-02-15T${hours}:${minutes}:00.000Z`,
+    authorId: authorName,
     authorName,
     content,
   };
@@ -181,6 +215,59 @@ const CHAOS_FACTS = [
   "torneo-sabato",
   "minecraft",
   "modulo",
+];
+
+const CHAOS_EN_MESSAGES: TranscriptMessage[] = [
+  ["Roby", 0, "brutal day today, I ate twice"],
+  ["Ago", 1, "I have been fasting since last night, do not ask"],
+  ["Claudia", 2, "yesterday's thing was absurd, not talking about it here"],
+  ["Titan", 3, "guys everyone finds out about yesterday sooner or later"],
+  ["Roby", 4, "alright, decided: saturday at 21:00 we play Among Us, who is in?"],
+  ["Fede", 5, "I am in, but if you kill me first I am suing"],
+  ["Ludo", 6, "maybe, depends on my shift"],
+  [
+    "Dany",
+    7,
+    "made the form, link here: https://example.com/saturday-tournament - signups close wednesday 18",
+  ],
+  ["Titan", 8, "another form, your masterpiece"],
+  ["Ago", 9, "who is hosting the Minecraft server? my PC sounds like a blender"],
+  ["Claudia", 10, "jet powered blender"],
+  ["Roby", 11, "answer Ago's question instead of laughing"],
+  ["Fede", 12, "cannot, my router is in mourning"],
+  ["Dany", 13, "coffee is a food group, I have been saying it for years"],
+  ["Ago", 14, "breakfast: coffee and a croissant. lunch: coffee. dinner: surprises"],
+  ["Titan", 15, "the cat stared at the fridge for three minutes then walked away"],
+  ["Roby", 16, "relatable"],
+  ["Claudia", 17, "the file thing needs sorting out though, there are too many versions"],
+  ["Ludo", 18, "which file?"],
+  ["Claudia", 19, "you know which"],
+  ["Ludo", 20, "no"],
+  ["Claudia", 21, "better this way"],
+  ["Fede", 22, "love it when you two understand each other"],
+  ["Titan", 23, "proposal: pineapple pizza for whoever comes last in Among Us"],
+  ["Ago", 24, "criminal offence"],
+  ["Roby", 25, "saturday 21 confirmed then? we need a recap"],
+  [
+    "Dany",
+    26,
+    "confirmed, the form is in my message. and whoever wants the impostor role say so now",
+  ],
+  ["Ludo", 27, "impostor"],
+  ["Fede", 28, "obviously"],
+  ["Titan", 29, "I am always impostor inside"],
+].map(([author, minute, content], index) =>
+  makeMessage(300 + index, String(author), Number(minute), String(content)),
+);
+
+const CHAOS_EN_FACTS = [
+  "among us",
+  "saturday",
+  "21",
+  "wednesday",
+  "saturday-tournament",
+  "minecraft",
+  "form",
 ];
 
 const FILLER = [
@@ -240,6 +327,10 @@ describe.skipIf(!enabled)("summary eval", () => {
   for (const cfg of selected) {
     it(`${cfg.label} / chaos-short`, { timeout: 480_000 }, async () => {
       await evalCase(cfg, "chaos-short", CHAOS_MESSAGES, CHAOS_FACTS);
+    });
+
+    it(`${cfg.label} / chaos-short-en`, { timeout: 480_000 }, async () => {
+      await evalCase(cfg, "chaos-short-en", CHAOS_EN_MESSAGES, CHAOS_EN_FACTS, TRAPS_EN, "en");
     });
 
     it(`${cfg.label} / chunked`, { timeout: 900_000 }, async () => {
