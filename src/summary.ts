@@ -634,6 +634,8 @@ export async function runSummaryPoll(env: Env, deps: SummaryDeps) {
 }
 
 export interface ManualSummaryMessage {
+  // Optional so messages already queued by an older deploy still route to this handler.
+  kind?: "summary"
   guildId: string
   channelId: string
   needed: number

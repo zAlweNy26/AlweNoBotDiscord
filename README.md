@@ -62,14 +62,14 @@ BING_MAPS_KEY=
 
 ## Commands
 
-- Info: `/ping`, `/info`, `/server`, `/stats` (owner only)
+- Info: `/ping`, `/info`, `/server`, `/activity`, `/stats` (owner only)
 - Mod: `/help`, `/clear`, `/welcome`, `/farewell`, `/counter`, `/summary`, `/reactionrole`
 - Misc: `/color`, `/crypto`, `/distance`, `/weather`, `/steam`, `/steamgame`, `/ytinfo`
 
 ## Notes
 
 - The privileged **Message Content Intent** must be enabled for `/summary`: without it, the Discord API returns empty `content` for channel history. The AI summaries run on Workers AI (`AI` binding) with `@cf/zai-org/glm-5.3-flash`.
-- `/summary manual` is processed through Cloudflare Queues (`alwenobot_summary`): the deferred reply is patched as soon as the summary is ready, so long channel scans never hit the interaction timeout. Automatic summaries are unchanged.
+- `/summary manual` and `/activity` are processed through Cloudflare Queues (`alwenobot_summary`): the deferred reply is patched as soon as the work is done, so long channel scans never hit the interaction timeout and never hold a request open. Both share the one queue and are told apart by the `kind` field on the message; a message without `kind` is treated as a summary. Automatic summaries are unchanged.
 - Automatic summaries start with `@here #summary` in the message content. The `@here` ping requires the **Mention @everyone, @here and all roles** permission (without it the mention is posted without notifying). Search `summary` (or `#summary`) to list past summaries.
 - The member counter channel rename is debounced (10 minutes) to stay well inside Discord rate limits.
 - Legacy `steam_countries.min.json` was replaced by the `src/lib/countries.ts` map; the counter format supports `{{membri}}`.

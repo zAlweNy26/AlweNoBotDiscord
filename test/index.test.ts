@@ -3,8 +3,8 @@ import { exports } from "cloudflare:workers"
 import { type APIChatInputApplicationCommandInteraction, InteractionResponseType, type REST } from "discord.js"
 import { describe, expect, it, vi } from "vitest"
 import { summaryCommand } from "../src/commands/summary"
-import { handleManualSummaryBatch } from "../src/index"
-import type { ManualSummaryDeps, ManualSummaryMessage } from "../src/summary"
+import { handleQueueBatch, type QueuedJob } from "../src/index"
+import type { ManualSummaryDeps } from "../src/summary"
 
 function createDeps(options: { patchFails?: boolean } = {}): ManualSummaryDeps {
   const rest = {
@@ -26,14 +26,9 @@ function createDeps(options: { patchFails?: boolean } = {}): ManualSummaryDeps {
   return { rest, summarize: vi.fn(async () => "riassunto"), applicationId: "app" }
 }
 
-function createBatch() {
-  return createMessageBatch<ManualSummaryMessage>("alwenobot-summary", [
-    {
-      id: "message-1",
-      timestamp: new Date(0),
-      attempts: 1,
-      body: { channelId: "channel", needed: 10, token: "token" },
-    },
+function createBatch(body: QueuedJob = { guildId: "guild", channelId: "channel", needed: 10, token: "token" }) {
+  return createMessageBatch<QueuedJob>("alwenobot-summary", [
+    { id: "message-1", timestamp: new Date(0), attempts: 1, body },
   ])
 }
 
@@ -73,12 +68,12 @@ describe("summary manual command", () => {
   })
 })
 
-describe("handleManualSummaryBatch", () => {
+describe("handleQueueBatch", () => {
   it("acks messages that were delivered", async () => {
     const batch = createBatch()
     const ctx = createExecutionContext()
 
-    await handleManualSummaryBatch(batch, createDeps())
+    await handleQueueBatch(batch, createDeps())
 
     const result = await getQueueResult(batch, ctx)
     expect(result.explicitAcks).toContain("message-1")
@@ -89,10 +84,38 @@ describe("handleManualSummaryBatch", () => {
     const batch = createBatch()
     const ctx = createExecutionContext()
 
-    await handleManualSummaryBatch(batch, createDeps({ patchFails: true }))
+    await handleQueueBatch(batch, createDeps({ patchFails: true }))
 
     const result = await getQueueResult(batch, ctx)
     expect(result.retryMessages.map((message: { msgId: string }) => message.msgId)).toEqual(["message-1"])
     expect(result.explicitAcks).toEqual([])
+  })
+
+  it("routes activity jobs to the activity worker instead of the summarizer", async () => {
+    const patched: { embeds: { title?: string }[] }[] = []
+    const rest = {
+      get: vi.fn(async () => [
+        {
+          id: "1",
+          content: "ciao",
+          timestamp: new Date().toISOString(),
+          author: { id: "10", username: "user" },
+        },
+      ]),
+      patch: vi.fn(async (_route: string, body: { body: { embeds: { title?: string }[] } }) => {
+        patched.push(body.body)
+        return {}
+      }),
+    } as unknown as REST
+    const summarize = vi.fn(async () => "riassunto")
+    const batch = createBatch({ kind: "activity", channelId: "channel", token: "token" })
+    const ctx = createExecutionContext()
+
+    await handleQueueBatch(batch, { rest, summarize, applicationId: "app" })
+
+    const result = await getQueueResult(batch, ctx)
+    expect(result.explicitAcks).toContain("message-1")
+    expect(summarize).not.toHaveBeenCalled()
+    expect(patched[0]?.embeds[0]?.title).toBe("📊 Utenti più attivi")
   })
 })

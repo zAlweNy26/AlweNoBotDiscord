@@ -196,6 +196,7 @@ export const summaryCommand: Command = {
         const needed = typeof requested === "number" ? clamp(requested, MIN_THRESHOLD, MAX_THRESHOLD) : MIN_THRESHOLD
         try {
           await env.alwenobot_summary.send({
+            kind: "summary",
             guildId,
             channelId,
             needed,

@@ -16,6 +16,11 @@ export function getIntegerOption(interaction: Interaction, name: string) {
   return option?.type === ApplicationCommandOptionType.Integer ? option.value : undefined
 }
 
+export function getChannelOption(interaction: Interaction, name: string) {
+  const option = findOption(interaction, name)
+  return option?.type === ApplicationCommandOptionType.Channel ? option.value : undefined
+}
+
 export function getUserOption(interaction: Interaction, name: string) {
   const option = findOption(interaction, name)
   if (!option || option.type !== ApplicationCommandOptionType.User) return undefined

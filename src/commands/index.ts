@@ -1,3 +1,4 @@
+import { activityCommand } from "./activity"
 import { clearCommand } from "./clear"
 import { colorCommand } from "./color"
 import { counterCommand, farewellCommand, welcomeCommand } from "./config"
@@ -23,6 +24,7 @@ registerCommand(colorCommand)
 registerCommand(infoCommand)
 registerCommand(serverCommand)
 registerCommand(statsCommand)
+registerCommand(activityCommand)
 registerCommand(weatherCommand)
 registerCommand(cryptoCommand)
 registerCommand(distanceCommand)

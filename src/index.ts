@@ -1,4 +1,5 @@
 import { type APIInteraction, InteractionType, REST } from "discord.js"
+import { type ActivityReportMessage, deliverActivityReport } from "./commands/activity"
 import { GatewayDO } from "./gateway/GatewayDO"
 import { ephemeralError } from "./respond"
 import { routeInteraction } from "./router"
@@ -39,13 +40,19 @@ async function handleInteractions(request: Request, env: Env, ctx: ExecutionCont
   }
 }
 
-export async function handleManualSummaryBatch(batch: MessageBatch<ManualSummaryMessage>, deps: ManualSummaryDeps) {
+export type QueuedJob = ManualSummaryMessage | ActivityReportMessage
+
+export async function handleQueueBatch(batch: MessageBatch<QueuedJob>, deps: ManualSummaryDeps) {
   for (const message of batch.messages) {
     try {
-      await deliverManualSummary(deps, message.body)
+      if (message.body.kind === "activity") {
+        await deliverActivityReport(deps, message.body)
+      } else {
+        await deliverManualSummary(deps, message.body)
+      }
       message.ack()
     } catch (error) {
-      console.error(`Manual summary delivery failed for channel ${message.body.channelId}`, error)
+      console.error(`Queue delivery failed for channel ${message.body.channelId}`, error)
       message.retry()
     }
   }
@@ -69,11 +76,11 @@ export default {
     await stub.fetch("https://gateway.internal/summary-poll")
   },
 
-  async queue(batch: MessageBatch<ManualSummaryMessage>, env: Env) {
-    await handleManualSummaryBatch(batch, {
+  async queue(batch: MessageBatch<QueuedJob>, env: Env) {
+    await handleQueueBatch(batch, {
       rest: new REST({ version: "10" }).setToken(env.DISCORD_TOKEN),
       summarize: createSummarizer(env.AI),
       applicationId: env.DISCORD_APPLICATION_ID,
     })
   },
-} satisfies ExportedHandler<Env, ManualSummaryMessage>
+} satisfies ExportedHandler<Env, QueuedJob>
