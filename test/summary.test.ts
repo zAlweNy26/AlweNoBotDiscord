@@ -133,44 +133,51 @@ describe("SUMMARY_PROMPTS", () => {
     }
   })
 
-  it("carries budget and invention rules on the prompts that fill the embed", () => {
+  it("carries the budget and the three parts on the prompts that fill the embed", () => {
     for (const prompt of embedPrompts) {
       expect(prompt).toContain("2000 characters")
-      expect(prompt).toContain("INVENTION")
-      expect(prompt).toContain("Lie constantly, confidently and in detail")
-      expect(prompt).toContain("no sane person would believe")
-      expect(prompt).toContain("Whatever the group actually settled")
+      expect(prompt).toContain("TL;DR")
+      expect(prompt).toContain("Key moments")
+      expect(prompt).toContain("The verdict")
+      expect(prompt).toContain("three to five bullets")
     }
   })
 
-  it("keeps sensitive ground off the table even now that invention is licensed", () => {
+  it("keeps the facts somebody can rely on out of reach of the jokes", () => {
+    for (const prompt of embedPrompts) {
+      expect(prompt).toContain("The TL;DR and the verdict are strictly true")
+      expect(prompt).toContain("never invent a decision, a plan, a date or a time that nobody said")
+      expect(prompt).toContain("exaggeration hangs on something somebody actually typed")
+      expect(prompt).toContain("never move what one person said onto another")
+    }
+  })
+
+  it("keeps sensitive ground off the table even where exaggeration is licensed", () => {
     for (const prompt of embedPrompts) {
       expect(prompt).toContain("Never invent or joke about health, physical appearance, family")
     }
   })
 
-  it("orders a blast on everyone, with no warm landing, on the prompts that fill the embed", () => {
+  it("spares whoever gave it nothing instead of filling a bullet with them", () => {
     for (const prompt of embedPrompts) {
-      expect(prompt).toContain("Blast everyone by name")
-      expect(prompt).toContain("No survivors")
-      expect(prompt).toContain("Blast every person who appears")
-      expect(prompt).toContain("Never soften the landing")
+      expect(prompt).toContain("Go after the choices, not the people")
+      expect(prompt).toContain("Nobody is owed a kicking")
+      expect(prompt).toContain("dragged in to fill a bullet")
+      expect(prompt).not.toContain("Blast everyone by name")
+      expect(prompt).not.toContain("No survivors")
     }
   })
 
-  it("aims the blast at what people wrote, not at what they are", () => {
+  it("aims what it does say at what people wrote, not at what they are", () => {
     for (const prompt of embedPrompts) {
-      expect(prompt).toContain("Go after what they chose and how they behaved")
-      expect(prompt).toContain("the blast lands on")
-      expect(prompt).toContain("what they chose to type, never on what they are")
+      expect(prompt).toContain("what you comment on")
+      expect(prompt).toContain("what people chose to type, never what they are")
     }
   })
 
   it("writes the narrator into the story on the prompts that fill the embed", () => {
     for (const prompt of embedPrompts) {
       expect(prompt).toContain("You are a character in this server, not a camera")
-      expect(prompt).toContain("You are in this story too")
-      expect(prompt).toContain("deserves a verdict")
       expect(prompt).not.toContain("Never refer to yourself")
     }
   })

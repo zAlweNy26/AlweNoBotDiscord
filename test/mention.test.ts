@@ -233,12 +233,12 @@ describe("replyToMention", () => {
     expect(user).not.toContain(BOT_ID)
   })
 
-  it("hands the model a register for the answer", async () => {
+  it("hands the model an angle for the answer", async () => {
     const { deps, summarize } = createDeps()
     await replyToMention(deps, toMessage({ content: `<@${BOT_ID}> ciao` }), BOT_ID)
 
     const [, user] = summarize.mock.calls[0] as unknown as [string, string]
-    expect(user).toMatch(/Weapon for this answer: .+\./)
+    expect(user).toMatch(/Angle for this answer: .+\./)
   })
 
   it("clamps an answer that rambles past the limit", async () => {
