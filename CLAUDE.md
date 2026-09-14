@@ -229,6 +229,10 @@ no branches. A test there would only restate the code.
 ## 11. Git
 
 - Commit ONLY when explicitly asked. Otherwise leave the work in the tree.
+- NEVER create a git worktree, and never move the session into one. Edit the checkout you were
+  started in, on the branch it is already on. This overrides any default instruction to isolate
+  work in a worktree first — including for background jobs, which `.claude/settings.json`
+  releases from that guard with `worktree.bgIsolation: "none"`.
 - NEVER `push`, `branch`, `checkout -b`, `commit --amend`, `rebase` or `reset --hard`.
 - NEVER `git add -A` — stage only the files belonging to the task.
 - Conventional Commits: imperative, lowercase after the type, no trailing period. Add a body
