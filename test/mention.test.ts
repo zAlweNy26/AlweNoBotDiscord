@@ -19,6 +19,7 @@ interface FakeMentionedUser {
 
 interface FakeMention {
   content: string
+  timestamp?: string
   username?: string
   globalName?: string
   nick?: string
@@ -35,6 +36,7 @@ function toMessage(message: FakeMention): MentionMessage {
     id: "10",
     channel_id: "20",
     guild_id: "30",
+    timestamp: message.timestamp ?? "2026-09-14T21:41:00.000Z",
     content: message.content,
     author: {
       id: "1",
@@ -238,6 +240,35 @@ describe("replyToMention", () => {
     await replyToMention(deps, toMessage({ content: `<@${BOT_ID}> ciao` }), BOT_ID)
 
     const [, user] = summarize.mock.calls[0] as unknown as [string, string]
+    expect(user).toMatch(/Angle for this answer: .+\./)
+  })
+
+  it("tells the model the local time of the tag, in the server timezone", async () => {
+    const { deps, summarize } = createDeps()
+    const message = toMessage({ content: `<@${BOT_ID}> che si fa stasera?`, timestamp: "2026-09-14T21:41:00.000Z" })
+    await replyToMention(deps, message, BOT_ID)
+
+    const [, user] = summarize.mock.calls[0] as unknown as [string, string]
+    expect(user).toContain("Monday 14 September")
+    expect(user).toContain("23:41")
+  })
+
+  it("follows the server timezone out of summer time", async () => {
+    const { deps, summarize } = createDeps()
+    const message = toMessage({ content: `<@${BOT_ID}> ciao`, timestamp: "2026-01-15T21:41:00.000Z" })
+    await replyToMention(deps, message, BOT_ID)
+
+    const [, user] = summarize.mock.calls[0] as unknown as [string, string]
+    expect(user).toContain("22:41")
+  })
+
+  it("drops the clock rather than send a broken date", async () => {
+    const { deps, summarize } = createDeps()
+    await replyToMention(deps, toMessage({ content: `<@${BOT_ID}> ciao`, timestamp: "not a date" }), BOT_ID)
+
+    const [, user] = summarize.mock.calls[0] as unknown as [string, string]
+    expect(user).not.toContain("Invalid Date")
+    expect(user).not.toContain("where this server lives")
     expect(user).toMatch(/Angle for this answer: .+\./)
   })
 

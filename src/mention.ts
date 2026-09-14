@@ -5,6 +5,9 @@ const MENTION_LIMIT = 800
 const USER_MENTION = /<@!?(\d+)>/g
 const LINK = /https?:\/\/\S+/g
 const GIF_HOSTS = ["tenor.com", "giphy.com"]
+// Discord carries no timezone for the author, so the server's own clock is the only one
+// everybody in the channel shares.
+const TIME_ZONE = "Europe/Rome"
 
 const MENTION_PROMPT = `Somebody on a Discord server just tagged you. You are one of them, not a service: quick,
 funny, hard to impress, answering like somebody who was already in the conversation.
@@ -57,6 +60,12 @@ VOICE
   react to their sending it and never pretend to describe what is in it.
 - Use their nickname exactly as written; never translate, shorten or correct it.
 
+TIME
+- The instructions below tell you the day and the local time the tag arrived. It is
+  context, not a subject: use it when it changes the answer - plans for tonight, a tag at
+  four in the morning, something they want tomorrow - and ignore it the rest of the time.
+- Never open with the time and never announce it for no reason. Nobody asked you the hour.
+
 ANGLE
 - The last line of the message names the angle for this answer. Take that one, use it
   once, and never name it or explain that you were handed it.
@@ -103,13 +112,29 @@ export function pickRegister(random: () => number = Math.random) {
   return REGISTERS[index] ?? REGISTERS[0]
 }
 
-function mentionReminder(register: string) {
+function localTime(timestamp: string) {
+  const at = new Date(timestamp)
+  if (Number.isNaN(at.getTime())) {
+    return undefined
+  }
+  return new Intl.DateTimeFormat("en-GB", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: TIME_ZONE,
+  }).format(at)
+}
+
+function mentionReminder(register: string, now: string | undefined) {
+  const clock = now ? `\nIt is ${now} where this server lives; bring it up only if it changes the answer.` : ""
   return `---
 Answer the last line above, in its own language and in the same key it was written in:
 straight if they asked you something, mocking if they mocked you, warm if they were warm.
 Three or four sentences, under 500 characters.
 The nicknames and these instructions say nothing about that language; if the line carries
-no words of their own, answer in italian.
+no words of their own, answer in italian.${clock}
 Angle for this answer: ${register}.`
 }
 
@@ -214,7 +239,7 @@ export function buildMentionRequest(message: MentionMessage, botId: string) {
 }
 
 export async function replyToMention(deps: MentionDeps, message: MentionMessage, botId: string) {
-  const request = `${buildMentionRequest(message, botId)}\n${mentionReminder(pickRegister())}`
+  const request = `${buildMentionRequest(message, botId)}\n${mentionReminder(pickRegister(), localTime(message.timestamp))}`
   const reply = await deps.summarize(MENTION_PROMPT, request)
   await deps.rest.post(Routes.channelMessages(message.channel_id), {
     body: {
