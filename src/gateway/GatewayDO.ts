@@ -1,5 +1,6 @@
 import { type APIGuild, REST, Routes } from "discord.js"
 import { DEFAULT_COUNTER_FORMAT, DEFAULT_FAREWELL_MESSAGE, DEFAULT_WELCOME_MESSAGE, getGuildSettings } from "../db"
+import { isMentionTrigger, type MentionMessage, replyToMention } from "../mention"
 import { createSummarizer, runSummaryPoll } from "../summary"
 import { fillMessage } from "./messages"
 
@@ -7,7 +8,8 @@ const GATEWAY_URL = "wss://gateway.discord.gg"
 
 const INTENTS_GUILDS = 1
 const INTENTS_GUILD_MEMBERS = 2
-const INTENTS = INTENTS_GUILDS | INTENTS_GUILD_MEMBERS
+const INTENTS_GUILD_MESSAGES = 1 << 9
+const INTENTS = INTENTS_GUILDS | INTENTS_GUILD_MEMBERS | INTENTS_GUILD_MESSAGES
 
 const OP_DISPATCH = 0
 const OP_HEARTBEAT = 1
@@ -45,6 +47,7 @@ export class GatewayDO {
   private connecting = false
   private stateLoaded = false
   private sessionId: string | null = null
+  private sessionIntents: number | null = null
   private sequence: number | null = null
   private resumeBase = GATEWAY_URL
   private heartbeatInterval = DEFAULT_HEARTBEAT_INTERVAL_MS
@@ -178,7 +181,9 @@ export class GatewayDO {
   }
 
   private async startConnection() {
-    if (this.sessionId !== null && this.sequence !== null) {
+    // Intents are frozen at IDENTIFY, so a session resumed across an intent change would
+    // silently keep subscribing to the old events.
+    if (this.sessionId !== null && this.sequence !== null && this.sessionIntents === INTENTS) {
       this.send({
         op: OP_RESUME,
         d: {
@@ -206,11 +211,13 @@ export class GatewayDO {
       case "READY": {
         const ready = data as { session_id: string; resume_gateway_url?: string }
         this.sessionId = ready.session_id
+        this.sessionIntents = INTENTS
         if (ready.resume_gateway_url) {
           this.resumeBase = ready.resume_gateway_url
         }
         await this.state.storage.put({
           sessionId: this.sessionId,
+          sessionIntents: this.sessionIntents,
           sequence: this.sequence,
           resumeBase: this.resumeBase,
         })
@@ -222,6 +229,9 @@ export class GatewayDO {
         break
       case "GUILD_MEMBER_REMOVE":
         await this.handleMemberEvent("farewell", data as MemberEventData)
+        break
+      case "MESSAGE_CREATE":
+        await this.handleMention(data as MentionMessage)
         break
     }
   }
@@ -236,6 +246,21 @@ export class GatewayDO {
         afk: false,
       },
     })
+  }
+
+  private async handleMention(message: MentionMessage) {
+    if (!message.guild_id || !isMentionTrigger(message, this.env.DISCORD_APPLICATION_ID)) return
+    try {
+      const settings = await getGuildSettings(this.env.DB, message.guild_id)
+      if (!settings?.mentionEnabled) return
+      await replyToMention(
+        { rest: this.rest, summarize: createSummarizer(this.env.AI) },
+        message,
+        this.env.DISCORD_APPLICATION_ID,
+      )
+    } catch (error) {
+      console.error(`Failed to answer a mention in channel ${message.channel_id}`, error)
+    }
   }
 
   private async handleMemberEvent(kind: "welcome" | "farewell", event: MemberEventData) {
@@ -303,14 +328,16 @@ export class GatewayDO {
     if (this.stateLoaded) return
     this.stateLoaded = true
     this.sessionId = (await this.state.storage.get<string>("sessionId")) ?? null
+    this.sessionIntents = (await this.state.storage.get<number>("sessionIntents")) ?? null
     this.sequence = (await this.state.storage.get<number>("sequence")) ?? null
     this.resumeBase = (await this.state.storage.get<string>("resumeBase")) ?? GATEWAY_URL
   }
 
   private async resetSession() {
     this.sessionId = null
+    this.sessionIntents = null
     this.sequence = null
-    await this.state.storage.delete(["sessionId", "sequence"])
+    await this.state.storage.delete(["sessionId", "sessionIntents", "sequence"])
   }
 
   private async handleClose(code: number) {

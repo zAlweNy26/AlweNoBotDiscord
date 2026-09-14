@@ -22,6 +22,14 @@ describe("guild settings", () => {
     expect(settings.welcomeEnabled).toBe(false)
     expect(settings.welcomeChannelId).toBeNull()
     expect(settings.counterFormat).toBeNull()
+    expect(settings.mentionEnabled).toBe(false)
+  })
+
+  it("toggles the mention replies", async () => {
+    await updateGuildSettings(env.DB, GUILD_ID, { mentionEnabled: true })
+    expect((await getGuildSettings(env.DB, GUILD_ID))?.mentionEnabled).toBe(true)
+    await updateGuildSettings(env.DB, GUILD_ID, { mentionEnabled: false })
+    expect((await getGuildSettings(env.DB, GUILD_ID))?.mentionEnabled).toBe(false)
   })
 
   it("patches only the provided fields", async () => {

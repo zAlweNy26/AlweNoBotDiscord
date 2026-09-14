@@ -13,6 +13,7 @@ export interface GuildSettings {
   counterEnabled: boolean
   counterChannelId: string | null
   counterFormat: string | null
+  mentionEnabled: boolean
 }
 
 export const DEFAULT_WELCOME_MESSAGE = "👋 Benvenuto {{utente}} nel server!"

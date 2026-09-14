@@ -15,6 +15,13 @@
       "when": 1789223089974,
       "tag": "0001_mushy_luminals",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1789394985348,
+      "tag": "0002_cheerful_makkari",
+      "breakpoints": true
     }
   ]
 }
