@@ -1,14 +1,10 @@
-import { createExecutionContext, createMessageBatch, env, getQueueResult } from "cloudflare:test";
-import { exports } from "cloudflare:workers";
-import {
-  type APIChatInputApplicationCommandInteraction,
-  InteractionResponseType,
-  type REST,
-} from "discord.js";
-import { describe, expect, it, vi } from "vitest";
-import { summaryCommand } from "../src/commands/summary";
-import { handleManualSummaryBatch } from "../src/index";
-import type { ManualSummaryDeps, ManualSummaryMessage } from "../src/summary";
+import { createExecutionContext, createMessageBatch, env, getQueueResult } from "cloudflare:test"
+import { exports } from "cloudflare:workers"
+import { type APIChatInputApplicationCommandInteraction, InteractionResponseType, type REST } from "discord.js"
+import { describe, expect, it, vi } from "vitest"
+import { summaryCommand } from "../src/commands/summary"
+import { handleManualSummaryBatch } from "../src/index"
+import type { ManualSummaryDeps, ManualSummaryMessage } from "../src/summary"
 
 function createDeps(options: { patchFails?: boolean } = {}): ManualSummaryDeps {
   const rest = {
@@ -22,12 +18,12 @@ function createDeps(options: { patchFails?: boolean } = {}): ManualSummaryDeps {
     ]),
     patch: vi.fn(async () => {
       if (options.patchFails) {
-        throw new Error("patch failed");
+        throw new Error("patch failed")
       }
-      return {};
+      return {}
     }),
-  } as unknown as REST;
-  return { rest, summarize: vi.fn(async () => "riassunto"), applicationId: "app" };
+  } as unknown as REST
+  return { rest, summarize: vi.fn(async () => "riassunto"), applicationId: "app" }
 }
 
 function createBatch() {
@@ -38,16 +34,16 @@ function createBatch() {
       attempts: 1,
       body: { channelId: "channel", needed: 10, token: "token" },
     },
-  ]);
+  ])
 }
 
 describe("worker", () => {
   it("responds to /health", async () => {
-    const response = await exports.default.fetch("https://example.com/health");
-    expect(response.status).toBe(200);
-    expect(await response.text()).toBe("ok");
-  });
-});
+    const response = await exports.default.fetch("https://example.com/health")
+    expect(response.status).toBe(200)
+    expect(await response.text()).toBe("ok")
+  })
+})
 
 describe("summary manual command", () => {
   it("queues the summary through the configured queue binding", async () => {
@@ -71,34 +67,32 @@ describe("summary manual command", () => {
         },
       } as unknown as APIChatInputApplicationCommandInteraction,
       waitUntil: vi.fn(),
-    });
+    })
 
-    expect(response.type).toBe(InteractionResponseType.DeferredChannelMessageWithSource);
-  });
-});
+    expect(response.type).toBe(InteractionResponseType.DeferredChannelMessageWithSource)
+  })
+})
 
 describe("handleManualSummaryBatch", () => {
   it("acks messages that were delivered", async () => {
-    const batch = createBatch();
-    const ctx = createExecutionContext();
+    const batch = createBatch()
+    const ctx = createExecutionContext()
 
-    await handleManualSummaryBatch(batch, createDeps());
+    await handleManualSummaryBatch(batch, createDeps())
 
-    const result = await getQueueResult(batch, ctx);
-    expect(result.explicitAcks).toContain("message-1");
-    expect(result.retryMessages).toEqual([]);
-  });
+    const result = await getQueueResult(batch, ctx)
+    expect(result.explicitAcks).toContain("message-1")
+    expect(result.retryMessages).toEqual([])
+  })
 
   it("retries messages whose delivery failed", async () => {
-    const batch = createBatch();
-    const ctx = createExecutionContext();
+    const batch = createBatch()
+    const ctx = createExecutionContext()
 
-    await handleManualSummaryBatch(batch, createDeps({ patchFails: true }));
+    await handleManualSummaryBatch(batch, createDeps({ patchFails: true }))
 
-    const result = await getQueueResult(batch, ctx);
-    expect(result.retryMessages.map((message: { msgId: string }) => message.msgId)).toEqual([
-      "message-1",
-    ]);
-    expect(result.explicitAcks).toEqual([]);
-  });
-});
+    const result = await getQueueResult(batch, ctx)
+    expect(result.retryMessages.map((message: { msgId: string }) => message.msgId)).toEqual(["message-1"])
+    expect(result.explicitAcks).toEqual([])
+  })
+})

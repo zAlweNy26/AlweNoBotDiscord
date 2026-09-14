@@ -1,62 +1,60 @@
-import { SlashCommandBuilder } from "discord.js";
-import { fetchJson } from "../lib/http";
-import { describeWeatherCode } from "../lib/weather";
-import { ERROR_COLOR, SUCCESS_COLOR } from "../respond";
-import { runDeferred } from "./deferred";
-import { getStringOption } from "./options";
-import type { Command } from "./types";
+import { SlashCommandBuilder } from "discord.js"
+import { fetchJson } from "../lib/http"
+import { describeWeatherCode } from "../lib/weather"
+import { ERROR_COLOR, SUCCESS_COLOR } from "../respond"
+import { runDeferred } from "./deferred"
+import { getStringOption } from "./options"
+import type { Command } from "./types"
 
 interface GeocodingResult {
-  name: string;
-  latitude: number;
-  longitude: number;
-  timezone: string;
-  country?: string;
-  admin1?: string;
+  name: string
+  latitude: number
+  longitude: number
+  timezone: string
+  country?: string
+  admin1?: string
 }
 
 interface GeocodingResponse {
-  results?: GeocodingResult[];
+  results?: GeocodingResult[]
 }
 
 interface ForecastResponse {
-  timezone: string;
+  timezone: string
   current: {
-    time: string;
-    temperature_2m: number;
-    relative_humidity_2m: number;
-    wind_speed_10m: number;
-    weather_code: number;
-  };
+    time: string
+    temperature_2m: number
+    relative_humidity_2m: number
+    wind_speed_10m: number
+    weather_code: number
+  }
 }
 
 export const weatherCommand: Command = {
   data: new SlashCommandBuilder()
     .setName("weather")
     .setDescription("Mostra il meteo attuale per una località")
-    .addStringOption((option) =>
-      option.setName("luogo").setDescription("Città o località").setRequired(true),
-    ),
+    .addStringOption((option) => option.setName("luogo").setDescription("Città o località").setRequired(true)),
   category: "Misc",
   execute: (context) =>
     runDeferred(context, async () => {
-      const place = getStringOption(context.interaction, "luogo") ?? "";
+      const place = getStringOption(context.interaction, "luogo") ?? ""
 
       const location = (
         await fetchJson<GeocodingResponse>(
           `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(place)}&count=1&language=it&format=json`,
         )
-      ).results?.[0];
+      ).results?.[0]
       if (!location) {
         return {
           embeds: [{ color: ERROR_COLOR, description: `Nessun risultato per **${place}**.` }],
-        };
+        }
       }
 
       const forecast = await fetchJson<ForecastResponse>(
         `https://api.open-meteo.com/v1/forecast?latitude=${location.latitude}&longitude=${location.longitude}&current=temperature_2m,relative_humidity_2m,wind_speed_10m,weather_code&timezone=auto`,
-      );
-      const current = forecast.current;
+      )
+      const current = forecast.current
 
       return {
         embeds: [
@@ -81,6 +79,6 @@ export const weatherCommand: Command = {
             ],
           },
         ],
-      };
+      }
     }),
-};
+}

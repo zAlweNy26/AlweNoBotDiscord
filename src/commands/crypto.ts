@@ -1,24 +1,24 @@
-import { SlashCommandBuilder } from "discord.js";
-import { fetchJson } from "../lib/http";
-import { ERROR_COLOR, SUCCESS_COLOR } from "../respond";
-import { runDeferred } from "./deferred";
-import { getStringOption } from "./options";
-import type { Command } from "./types";
+import { SlashCommandBuilder } from "discord.js"
+import { fetchJson } from "../lib/http"
+import { ERROR_COLOR, SUCCESS_COLOR } from "../respond"
+import { runDeferred } from "./deferred"
+import { getStringOption } from "./options"
+import type { Command } from "./types"
 
 interface CoinGeckoMarket {
-  id: string;
-  symbol: string;
-  name: string;
-  image: string;
-  current_price: number;
-  price_change_percentage_24h: number | null;
-  high_24h: number;
-  low_24h: number;
+  id: string
+  symbol: string
+  name: string
+  image: string
+  current_price: number
+  price_change_percentage_24h: number | null
+  high_24h: number
+  low_24h: number
 }
 
 function formatEuro(value: number | null) {
-  if (value === null) return "n/d";
-  return new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR" }).format(value);
+  if (value === null) return "n/d"
+  return new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR" }).format(value)
 }
 
 export const cryptoCommand: Command = {
@@ -31,13 +31,13 @@ export const cryptoCommand: Command = {
   category: "Misc",
   execute: (context) =>
     runDeferred(context, async () => {
-      const id = (getStringOption(context.interaction, "id") ?? "").toLowerCase();
+      const id = (getStringOption(context.interaction, "id") ?? "").toLowerCase()
 
-      let coins: CoinGeckoMarket[];
+      let coins: CoinGeckoMarket[]
       try {
         coins = await fetchJson<CoinGeckoMarket[]>(
           `https://api.coingecko.com/api/v3/coins/markets?vs_currency=eur&ids=${encodeURIComponent(id)}`,
-        );
+        )
       } catch {
         return {
           embeds: [
@@ -46,14 +46,14 @@ export const cryptoCommand: Command = {
               description: "Servizio momentaneamente non disponibile, riprova più tardi.",
             },
           ],
-        };
+        }
       }
 
-      const coin = Array.isArray(coins) ? coins[0] : undefined;
+      const coin = Array.isArray(coins) ? coins[0] : undefined
       if (!coin) {
         return {
           embeds: [{ color: ERROR_COLOR, description: `La criptomoneta **${id}** non esiste.` }],
-        };
+        }
       }
 
       return {
@@ -74,6 +74,6 @@ export const cryptoCommand: Command = {
             ],
           },
         ],
-      };
+      }
     }),
-};
+}

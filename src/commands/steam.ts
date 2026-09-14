@@ -1,64 +1,64 @@
-import { type APIEmbed, type APIEmbedField, SlashCommandBuilder } from "discord.js";
-import { colorByStatus } from "../lib/colors";
-import { getCountryName } from "../lib/countries";
-import { formatUnixTimestamp } from "../lib/format";
-import { fetchJson } from "../lib/http";
-import { parseSteamInput } from "../lib/steam";
-import { ERROR_COLOR } from "../respond";
-import { runDeferred } from "./deferred";
-import { getStringOption } from "./options";
-import type { Command } from "./types";
+import { type APIEmbed, type APIEmbedField, SlashCommandBuilder } from "discord.js"
+import { colorByStatus } from "../lib/colors"
+import { getCountryName } from "../lib/countries"
+import { formatUnixTimestamp } from "../lib/format"
+import { fetchJson } from "../lib/http"
+import { parseSteamInput } from "../lib/steam"
+import { ERROR_COLOR } from "../respond"
+import { runDeferred } from "./deferred"
+import { getStringOption } from "./options"
+import type { Command } from "./types"
 
-const API_BASE = "https://api.steampowered.com";
+const API_BASE = "https://api.steampowered.com"
 
 interface ResolveVanityResponse {
-  response: { steamid?: string; success: number; message?: string };
+  response: { steamid?: string; success: number; message?: string }
 }
 
 interface PlayerSummary {
-  steamid: string;
-  personaname: string;
-  avatarfull: string;
-  personastate: number;
-  loccountrycode?: string;
-  timecreated?: number;
-  lastlogoff?: number;
-  gameextrainfo?: string;
-  gameid?: string;
+  steamid: string
+  personaname: string
+  avatarfull: string
+  personastate: number
+  loccountrycode?: string
+  timecreated?: number
+  lastlogoff?: number
+  gameextrainfo?: string
+  gameid?: string
 }
 
 interface PlayerSummariesResponse {
-  response: { players: PlayerSummary[] };
+  response: { players: PlayerSummary[] }
 }
 
 interface OwnedGame {
-  appid: number;
-  name: string;
-  playtime_forever: number;
+  appid: number
+  name: string
+  playtime_forever: number
 }
 
 interface OwnedGamesResponse {
-  response: { game_count?: number; games?: OwnedGame[] };
+  response: { game_count?: number; games?: OwnedGame[] }
 }
 
 interface FriendListResponse {
-  friendslist?: { friends: unknown[] };
+  friendslist?: { friends: unknown[] }
 }
 
 interface PlayerLevelResponse {
-  response: { player_level?: number };
+  response: { player_level?: number }
 }
 
 function isSteamKeyError(error: unknown) {
-  return error instanceof Error && (error.message.includes("403") || error.message.includes("401"));
+  return error instanceof Error && (error.message.includes("403") || error.message.includes("401"))
 }
 
 function formatHours(minutes: number) {
-  return `${(minutes / 60).toFixed(1)} ore`;
+  return `${(minutes / 60).toFixed(1)} ore`
 }
 
 async function steamGet<T>(path: string, key: string) {
-  return fetchJson<T>(`${API_BASE}${path}${path.includes("?") ? "&" : "?"}key=${key}`);
+  return fetchJson<T>(`${API_BASE}${path}${path.includes("?") ? "&" : "?"}key=${key}`)
 }
 
 export const steamCommand: Command = {
@@ -67,15 +67,12 @@ export const steamCommand: Command = {
     .setName("steam")
     .setDescription("Mostra le informazioni di un profilo Steam")
     .addStringOption((option) =>
-      option
-        .setName("query")
-        .setDescription("Nome personalizzato, URL del profilo o SteamID")
-        .setRequired(true),
+      option.setName("query").setDescription("Nome personalizzato, URL del profilo o SteamID").setRequired(true),
     ),
   async execute(context) {
-    const { env, interaction } = context;
-    const raw = getStringOption(interaction, "query");
-    const parsed = raw ? parseSteamInput(raw) : null;
+    const { env, interaction } = context
+    const raw = getStringOption(interaction, "query")
+    const parsed = raw ? parseSteamInput(raw) : null
     if (!parsed) {
       return {
         type: 4,
@@ -84,14 +81,13 @@ export const steamCommand: Command = {
           embeds: [
             {
               color: ERROR_COLOR,
-              description:
-                "Specifica un nome personalizzato, un URL del profilo o uno SteamID valido.",
+              description: "Specifica un nome personalizzato, un URL del profilo o uno SteamID valido.",
             },
           ],
         },
-      };
+      }
     }
-    const key = env.STEAM_API_KEY;
+    const key = env.STEAM_API_KEY
     if (!key) {
       return {
         type: 4,
@@ -99,18 +95,18 @@ export const steamCommand: Command = {
           flags: 64,
           embeds: [{ color: ERROR_COLOR, description: "🔑 Chiave API di Steam non configurata." }],
         },
-      };
+      }
     }
 
     return runDeferred(context, async () => {
-      let steamId: string;
+      let steamId: string
       try {
         if (parsed.kind === "id64") {
-          steamId = parsed.id;
+          steamId = parsed.id
         } else {
           const resolved = await fetchJson<ResolveVanityResponse>(
             `${API_BASE}/ISteamUser/ResolveVanityURL/v1/?key=${key}&vanityurl=${encodeURIComponent(parsed.name)}`,
-          );
+          )
           if (resolved.response.success !== 1 || !resolved.response.steamid) {
             return {
               embeds: [
@@ -119,17 +115,14 @@ export const steamCommand: Command = {
                   description: `❌ Nessun profilo Steam trovato per **${parsed.name}**.`,
                 },
               ],
-            };
+            }
           }
-          steamId = resolved.response.steamid;
+          steamId = resolved.response.steamid
         }
 
         const player = (
-          await steamGet<PlayerSummariesResponse>(
-            `/ISteamUser/GetPlayerSummaries/v0002/?steamids=${steamId}`,
-            key,
-          )
-        ).response.players[0];
+          await steamGet<PlayerSummariesResponse>(`/ISteamUser/GetPlayerSummaries/v0002/?steamids=${steamId}`, key)
+        ).response.players[0]
         if (!player) {
           return {
             embeds: [
@@ -138,7 +131,7 @@ export const steamCommand: Command = {
                 description: `❌ Nessun profilo Steam trovato per **${raw}**.`,
               },
             ],
-          };
+          }
         }
 
         const [owned, friends, level] = await Promise.all([
@@ -150,18 +143,14 @@ export const steamCommand: Command = {
             `/ISteamUser/GetFriendList/v0001/?steamid=${steamId}&relationship=friend`,
             key,
           ).catch(() => null),
-          steamGet<PlayerLevelResponse>(
-            `/IPlayerService/GetSteamLevel/v1/?steamid=${steamId}`,
-            key,
-          ).catch(() => null),
-        ]);
+          steamGet<PlayerLevelResponse>(`/IPlayerService/GetSteamLevel/v1/?steamid=${steamId}`, key).catch(() => null),
+        ])
 
         const fields: APIEmbedField[] = [
           { name: "Nome", value: player.personaname, inline: true },
           {
             name: "Livello",
-            value:
-              level?.response.player_level != null ? String(level.response.player_level) : "n/d",
+            value: level?.response.player_level != null ? String(level.response.player_level) : "n/d",
             inline: true,
           },
           {
@@ -174,19 +163,17 @@ export const steamCommand: Command = {
             value: owned?.response.game_count != null ? String(owned.response.game_count) : "n/d",
             inline: true,
           },
-        ];
+        ]
 
         if (player.gameextrainfo) {
-          fields.push({ name: "In gioco", value: player.gameextrainfo, inline: true });
-          const current = owned?.response.games?.find(
-            (game) => String(game.appid) === player.gameid,
-          );
+          fields.push({ name: "In gioco", value: player.gameextrainfo, inline: true })
+          const current = owned?.response.games?.find((game) => String(game.appid) === player.gameid)
           if (current) {
             fields.push({
               name: "Ore nel gioco",
               value: formatHours(current.playtime_forever),
               inline: true,
-            });
+            })
           }
         }
 
@@ -194,13 +181,13 @@ export const steamCommand: Command = {
           name: "Provenienza",
           value: player.loccountrycode ? getCountryName(player.loccountrycode) : "Sconosciuta",
           inline: true,
-        });
+        })
         if (player.timecreated) {
           fields.push({
             name: "Account creato il",
             value: formatUnixTimestamp(player.timecreated),
             inline: true,
-          });
+          })
         }
 
         const embed: APIEmbed = {
@@ -208,11 +195,11 @@ export const steamCommand: Command = {
           author: { name: `Informazioni su ${player.personaname}` },
           thumbnail: { url: player.avatarfull },
           fields,
-        };
-        if (player.lastlogoff) {
-          embed.footer = { text: `Ultimo accesso: ${formatUnixTimestamp(player.lastlogoff)}` };
         }
-        return { embeds: [embed] };
+        if (player.lastlogoff) {
+          embed.footer = { text: `Ultimo accesso: ${formatUnixTimestamp(player.lastlogoff)}` }
+        }
+        return { embeds: [embed] }
       } catch (error) {
         if (isSteamKeyError(error)) {
           return {
@@ -222,10 +209,10 @@ export const steamCommand: Command = {
                 description: "🔑 Chiave API di Steam non valida o non configurata.",
               },
             ],
-          };
+          }
         }
-        throw error;
+        throw error
       }
-    });
+    })
   },
-};
+}

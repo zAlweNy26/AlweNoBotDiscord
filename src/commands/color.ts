@@ -1,29 +1,29 @@
-import convert from "color-convert";
-import { SlashCommandBuilder } from "discord.js";
-import { embedResponse, ephemeralError } from "../respond";
-import { getStringOption } from "./options";
-import type { Command } from "./types";
+import convert from "color-convert"
+import { SlashCommandBuilder } from "discord.js"
+import { embedResponse, ephemeralError } from "../respond"
+import { getStringOption } from "./options"
+import type { Command } from "./types"
 
-type Format = "hex" | "rgb" | "hsl" | "hsv" | "xyz" | "hcg";
-type Rgb = [number, number, number];
+type Format = "hex" | "rgb" | "hsl" | "hsv" | "xyz" | "hcg"
+type Rgb = [number, number, number]
 
 function parseValues(raw: string) {
   const values = raw
     .trim()
     .split(/[\s,]+/)
     .filter(Boolean)
-    .map(Number);
+    .map(Number)
   if (values.length !== 3 || values.some((value) => !Number.isFinite(value))) {
-    return null;
+    return null
   }
-  return values as Rgb;
+  return values as Rgb
 }
 
 function toRgb(format: Format, raw: string) {
   if (format === "hex") {
-    const hex = raw.replace(/^#/, "");
+    const hex = raw.replace(/^#/, "")
     if (!/^[0-9a-f]{3}$|^[0-9a-f]{6}$/i.test(hex)) {
-      return null;
+      return null
     }
     return convert.hex.rgb(
       hex.length === 3
@@ -32,31 +32,31 @@ function toRgb(format: Format, raw: string) {
             .map((char) => char + char)
             .join("")
         : hex,
-    ) as Rgb;
+    ) as Rgb
   }
 
-  const values = parseValues(raw);
+  const values = parseValues(raw)
   if (!values) {
-    return null;
+    return null
   }
-  const [a, b, c] = values;
+  const [a, b, c] = values
 
   switch (format) {
     case "rgb":
-      if (values.some((value) => value < 0 || value > 255)) return null;
-      return [Math.round(a), Math.round(b), Math.round(c)] satisfies Rgb;
+      if (values.some((value) => value < 0 || value > 255)) return null
+      return [Math.round(a), Math.round(b), Math.round(c)] satisfies Rgb
     case "hsl":
-      if (a < 0 || a > 360 || b < 0 || b > 100 || c < 0 || c > 100) return null;
-      return convert.hsl.rgb([a, b, c]) as Rgb;
+      if (a < 0 || a > 360 || b < 0 || b > 100 || c < 0 || c > 100) return null
+      return convert.hsl.rgb([a, b, c]) as Rgb
     case "hsv":
-      if (a < 0 || a > 360 || b < 0 || b > 100 || c < 0 || c > 100) return null;
-      return convert.hsv.rgb([a, b, c]) as Rgb;
+      if (a < 0 || a > 360 || b < 0 || b > 100 || c < 0 || c > 100) return null
+      return convert.hsv.rgb([a, b, c]) as Rgb
     case "xyz":
-      if (values.some((value) => value < 0)) return null;
-      return convert.xyz.rgb([a, b, c]) as Rgb;
+      if (values.some((value) => value < 0)) return null
+      return convert.xyz.rgb([a, b, c]) as Rgb
     case "hcg":
-      if (a < 0 || a > 360 || b < 0 || b > 100 || c < 0 || c > 100) return null;
-      return convert.hcg.rgb([a, b, c]) as Rgb;
+      if (a < 0 || a > 360 || b < 0 || b > 100 || c < 0 || c > 100) return null
+      return convert.hcg.rgb([a, b, c]) as Rgb
   }
 }
 
@@ -80,34 +80,31 @@ export const colorCommand: Command = {
         ),
     )
     .addStringOption((option) =>
-      option
-        .setName("valore")
-        .setDescription("Valore da convertire (es. ff0000, 255,0,0, 0,100,50)")
-        .setRequired(true),
+      option.setName("valore").setDescription("Valore da convertire (es. ff0000, 255,0,0, 0,100,50)").setRequired(true),
     ),
   execute({ interaction }) {
-    const format = getStringOption(interaction, "formato") as Format | undefined;
-    const raw = getStringOption(interaction, "valore");
+    const format = getStringOption(interaction, "formato") as Format | undefined
+    const raw = getStringOption(interaction, "valore")
     if (!format || raw === undefined) {
-      return ephemeralError("Specifica il formato e il valore da convertire.");
+      return ephemeralError("Specifica il formato e il valore da convertire.")
     }
 
-    let rgb: Rgb | null = null;
+    let rgb: Rgb | null = null
     try {
-      rgb = toRgb(format, raw);
+      rgb = toRgb(format, raw)
     } catch {
-      rgb = null;
+      rgb = null
     }
     if (!rgb) {
       return ephemeralError(
         "Valore non valido. Esempi: hex `ff0000`, rgb `255, 0, 0`, hsl `0, 100, 50`, hsv `0, 100, 100`, xyz `41.24, 21.26, 1.93`, hcg `0, 100, 100`.",
-      );
+      )
     }
 
-    const hex = convert.rgb.hex(rgb) as string;
-    const [h, s, l] = convert.rgb.hsl(rgb) as Rgb;
-    const [hsvH, hsvS, hsvV] = convert.rgb.hsv(rgb) as Rgb;
-    const [hcgH, hcgC, hcgG] = convert.rgb.hcg(rgb) as Rgb;
+    const hex = convert.rgb.hex(rgb) as string
+    const [h, s, l] = convert.rgb.hsl(rgb) as Rgb
+    const [hsvH, hsvS, hsvV] = convert.rgb.hsv(rgb) as Rgb
+    const [hcgH, hcgC, hcgG] = convert.rgb.hcg(rgb) as Rgb
 
     return embedResponse({
       color: Number.parseInt(hex, 16),
@@ -136,6 +133,6 @@ export const colorCommand: Command = {
           inline: true,
         },
       ],
-    });
+    })
   },
-};
+}

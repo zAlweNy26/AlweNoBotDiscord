@@ -27,8 +27,8 @@ const WEATHER_DESCRIPTIONS: Record<number, string> = {
   95: "Temporale",
   96: "Temporale con grandine leggera",
   99: "Temporale con grandine intensa",
-};
+}
 
 export function describeWeatherCode(code: number) {
-  return WEATHER_DESCRIPTIONS[code] ?? "Condizioni sconosciute";
+  return WEATHER_DESCRIPTIONS[code] ?? "Condizioni sconosciute"
 }

@@ -1,13 +1,13 @@
-import { SlashCommandBuilder } from "discord.js";
-import { embedResponse, SUCCESS_COLOR } from "../respond";
-import { commands } from "./registry";
-import type { Command, CommandCategory } from "./types";
+import { SlashCommandBuilder } from "discord.js"
+import { embedResponse, SUCCESS_COLOR } from "../respond"
+import { commands } from "./registry"
+import type { Command, CommandCategory } from "./types"
 
 const CATEGORY_LABELS: Record<CommandCategory, string> = {
   Mod: "🛠️ Moderazione",
   Info: "ℹ️ Informazioni",
   Misc: "🎲 Varie",
-};
+}
 
 export const helpCommand: Command = {
   category: "Mod",
@@ -25,6 +25,6 @@ export const helpCommand: Command = {
             .map((command) => `\`/${command.data.name}\``)
             .join(" ") || "—",
       })),
-    });
+    })
   },
-};
+}

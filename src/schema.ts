@@ -1,4 +1,4 @@
-import { index, integer, primaryKey, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { index, integer, primaryKey, sqliteTable, text } from "drizzle-orm/sqlite-core"
 
 export const guildSettings = sqliteTable("guild_settings", {
   guildId: text("guild_id").primaryKey(),
@@ -11,7 +11,7 @@ export const guildSettings = sqliteTable("guild_settings", {
   counterEnabled: integer("counter_enabled", { mode: "boolean" }).notNull().default(false),
   counterChannelId: text("counter_channel_id"),
   counterFormat: text("counter_format"),
-});
+})
 
 export const summaryChannels = sqliteTable(
   "summary_channels",
@@ -24,7 +24,7 @@ export const summaryChannels = sqliteTable(
     createdAt: integer("created_at").notNull(),
   },
   (table) => [primaryKey({ columns: [table.guildId, table.channelId] })],
-);
+)
 
 export const roleButtons = sqliteTable(
   "role_buttons",
@@ -39,4 +39,4 @@ export const roleButtons = sqliteTable(
     primaryKey({ columns: [table.messageId, table.roleId] }),
     index("role_buttons_guild_idx").on(table.guildId),
   ],
-);
+)

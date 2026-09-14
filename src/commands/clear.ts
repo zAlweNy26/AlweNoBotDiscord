@@ -1,9 +1,9 @@
-import { type APIMessage, PermissionFlagsBits, Routes, SlashCommandBuilder } from "discord.js";
-import { ephemeralEmbed, ephemeralError, SUCCESS_COLOR } from "../respond";
-import { getIntegerOption } from "./options";
-import type { Command } from "./types";
+import { type APIMessage, PermissionFlagsBits, Routes, SlashCommandBuilder } from "discord.js"
+import { ephemeralEmbed, ephemeralError, SUCCESS_COLOR } from "../respond"
+import { getIntegerOption } from "./options"
+import type { Command } from "./types"
 
-const TWO_WEEKS_MS = 14 * 24 * 60 * 60 * 1000;
+const TWO_WEEKS_MS = 14 * 24 * 60 * 60 * 1000
 
 export const clearCommand: Command = {
   category: "Mod",
@@ -21,11 +21,11 @@ export const clearCommand: Command = {
     ),
   async execute({ rest, interaction }) {
     if (!interaction.guild_id) {
-      return ephemeralError("Questo comando può essere usato solo in un server.");
+      return ephemeralError("Questo comando può essere usato solo in un server.")
     }
-    const amount = getIntegerOption(interaction, "quantita");
+    const amount = getIntegerOption(interaction, "quantita")
     if (amount === undefined) {
-      return ephemeralError("Specifica il numero di messaggi da eliminare.");
+      return ephemeralError("Specifica il numero di messaggi da eliminare.")
     }
     const ids = (
       (await rest.get(Routes.channelMessages(interaction.channel_id), {
@@ -33,21 +33,21 @@ export const clearCommand: Command = {
       })) as APIMessage[]
     )
       .filter((message) => Date.now() - Date.parse(message.timestamp) < TWO_WEEKS_MS)
-      .map((message) => message.id);
+      .map((message) => message.id)
     if (ids.length === 0) {
-      return ephemeralError("Non ci sono messaggi recenti da eliminare.");
+      return ephemeralError("Non ci sono messaggi recenti da eliminare.")
     }
-    const [onlyId] = ids;
+    const [onlyId] = ids
     if (ids.length === 1 && onlyId) {
-      await rest.delete(Routes.channelMessage(interaction.channel_id, onlyId));
+      await rest.delete(Routes.channelMessage(interaction.channel_id, onlyId))
     } else {
       await rest.post(Routes.channelBulkDelete(interaction.channel_id), {
         body: { messages: ids },
-      });
+      })
     }
     return ephemeralEmbed({
       color: SUCCESS_COLOR,
       description: `🗑️ Eliminati **${ids.length}** messaggi.`,
-    });
+    })
   },
-};
+}

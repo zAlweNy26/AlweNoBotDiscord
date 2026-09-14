@@ -1,44 +1,41 @@
-const MAX_TIMESTAMP_SKEW_MS = 5 * 60 * 1000;
+const MAX_TIMESTAMP_SKEW_MS = 5 * 60 * 1000
 
 function hexToBytes(hex: string) {
   if (hex.length === 0 || hex.length % 2 !== 0) {
-    return null;
+    return null
   }
-  const bytes = new Uint8Array(hex.length / 2);
+  const bytes = new Uint8Array(hex.length / 2)
   for (let i = 0; i < bytes.length; i++) {
-    const byte = Number.parseInt(hex.slice(i * 2, i * 2 + 2), 16);
+    const byte = Number.parseInt(hex.slice(i * 2, i * 2 + 2), 16)
     if (Number.isNaN(byte)) {
-      return null;
+      return null
     }
-    bytes[i] = byte;
+    bytes[i] = byte
   }
-  return bytes;
+  return bytes
 }
 
 export async function verifyDiscordSignature(input: {
-  publicKeyHex: string;
-  signatureHex: string | null;
-  timestamp: string | null;
-  body: string;
-  now?: number;
+  publicKeyHex: string
+  signatureHex: string | null
+  timestamp: string | null
+  body: string
+  now?: number
 }) {
-  const { signatureHex, timestamp } = input;
+  const { signatureHex, timestamp } = input
   if (!signatureHex || !timestamp) {
-    return false;
+    return false
   }
 
-  const timestampMs = Number(timestamp) * 1000;
-  if (
-    !Number.isFinite(timestampMs) ||
-    Math.abs((input.now ?? Date.now()) - timestampMs) > MAX_TIMESTAMP_SKEW_MS
-  ) {
-    return false;
+  const timestampMs = Number(timestamp) * 1000
+  if (!Number.isFinite(timestampMs) || Math.abs((input.now ?? Date.now()) - timestampMs) > MAX_TIMESTAMP_SKEW_MS) {
+    return false
   }
 
-  const keyBytes = hexToBytes(input.publicKeyHex);
-  const signatureBytes = hexToBytes(signatureHex);
+  const keyBytes = hexToBytes(input.publicKeyHex)
+  const signatureBytes = hexToBytes(signatureHex)
   if (!keyBytes || !signatureBytes) {
-    return false;
+    return false
   }
 
   try {
@@ -47,8 +44,8 @@ export async function verifyDiscordSignature(input: {
       await crypto.subtle.importKey("raw", keyBytes, { name: "Ed25519" }, false, ["verify"]),
       signatureBytes,
       new TextEncoder().encode(timestamp + input.body),
-    );
+    )
   } catch {
-    return false;
+    return false
   }
 }
