@@ -7,6 +7,9 @@ Slash commands arrive as HTTP interactions to a Worker. A Durable Object
 (welcome, farewell, member counter). Settings are stored in Cloudflare D1
 through Drizzle ORM. There is no always-on process and no `discord.js` client.
 
+This README covers running and shipping the bot. For the code itself — architecture, directory
+layout, conventions and the rules contributors follow — see [CLAUDE.md](CLAUDE.md).
+
 ## Stack
 
 - Runtime: Cloudflare Workers (workerd)
@@ -17,26 +20,6 @@ through Drizzle ORM. There is no always-on process and no `discord.js` client.
 - Gateway: custom Durable Object + DO alarms
 - Tests: Vitest with `@cloudflare/vitest-pool-workers` (real workerd)
 - Lint/format: Biome
-
-## Structure
-
-```
-src/
-  index.ts              Worker fetch/scheduled/queue entry, interaction verification
-  router.ts             interaction router (commands + message components)
-  respond.ts            response helpers (embeds, ephemeral replies)
-  verify.ts             Ed25519 interaction signature verification
-  db.ts                 Drizzle queries for guild settings, role buttons and summary channels
-  schema.ts             Drizzle schema
-  summary.ts            cron poller and manual summary worker (Workers AI)
-  commands/             one file per slash command + registry/index
-  gateway/GatewayDO.ts  Durable Object holding the Discord gateway
-  gateway/messages.ts   message template helpers ({{utente}}, {{membri}})
-  lib/                  pure helpers (countries, colors, dates, steam, weather, http)
-migrations/             drizzle-kit generated SQL
-scripts/                register-commands.ts (global slash command registration)
-test/                   Vitest suites running in the Workers pool
-```
 
 ## Setup
 
@@ -85,7 +68,7 @@ BING_MAPS_KEY=
 
 ## Notes
 
-- The privileged **Message Content Intent** must be enabled for `/summary`: without it, the Discord API returns empty `content` for channel history. The AI summaries run on Workers AI (`AI` binding) with `@cf/zai-org/glm-4.7-flash`.
+- The privileged **Message Content Intent** must be enabled for `/summary`: without it, the Discord API returns empty `content` for channel history. The AI summaries run on Workers AI (`AI` binding) with `@cf/zai-org/glm-5.3-flash`.
 - `/summary manual` is processed through Cloudflare Queues (`alwenobot_summary`): the deferred reply is patched as soon as the summary is ready, so long channel scans never hit the interaction timeout. Automatic summaries are unchanged.
 - Automatic summaries start with `@here #summary` in the message content. The `@here` ping requires the **Mention @everyone, @here and all roles** permission (without it the mention is posted without notifying). Search `summary` (or `#summary`) to list past summaries.
 - The member counter channel rename is debounced (10 minutes) to stay well inside Discord rate limits.
