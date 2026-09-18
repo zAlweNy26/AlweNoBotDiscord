@@ -17,11 +17,11 @@ import {
   pickNemesis,
   runManualSummary,
   runSummaryPoll,
-  SUMMARY_PROMPTS,
   type SummaryDeps,
   summarizeWindow,
   type TranscriptMessage,
 } from "../src/summary"
+import { SUMMARY_PROMPTS } from "../src/summary-prompts"
 
 const t = createTranslator("en")
 

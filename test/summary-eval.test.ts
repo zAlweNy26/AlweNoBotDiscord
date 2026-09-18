@@ -2,14 +2,8 @@ import { env } from "cloudflare:test"
 import { generateText } from "ai"
 import { describe, it } from "vitest"
 import { createWorkersAI } from "workers-ai-provider"
-import {
-  SUMMARY_MODEL,
-  SUMMARY_PROMPTS,
-  SUMMARY_REQUEST,
-  type SummaryPrompts,
-  summarizeWindow,
-  type TranscriptMessage,
-} from "../src/summary"
+import { SUMMARY_MODEL, SUMMARY_REQUEST, summarizeWindow, type TranscriptMessage } from "../src/summary"
+import { SUMMARY_PROMPTS, type SummaryPrompts } from "../src/summary-prompts"
 
 interface EvalConfig {
   label: string
