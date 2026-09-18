@@ -51,4 +51,15 @@ describe("createTranslator", () => {
     expect(t(($) => $.errors[error])).toBe("I don't have the permissions to do that.")
     expect(t(($) => $.weather.code95)).toBe("Thunderstorm")
   })
+
+  it("caches one translator per locale", () => {
+    expect(createTranslator("en")).toBe(createTranslator("en"))
+    expect(createTranslator("en")).not.toBe(createTranslator("it"))
+  })
+
+  it("rejects unknown translation keys at compile time", () => {
+    const t = createTranslator("en")
+    // @ts-expect-error unknown translation keys must not compile
+    expect(() => t(($) => $.commands.ping.unknownKey)).not.toThrow()
+  })
 })

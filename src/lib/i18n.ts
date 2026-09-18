@@ -20,15 +20,24 @@ export function normalizeLocale(locale: string | undefined): Locale {
   return primary && isLocale(primary) ? primary : "en"
 }
 
+const translators = new Map<Locale, TFunction>()
+
 export function createTranslator(locale: string | undefined): TFunction {
+  const normalized = normalizeLocale(locale)
+  const cached = translators.get(normalized)
+  if (cached) {
+    return cached
+  }
+  // Derived only from static resources, so it is safe to keep across requests in an isolate.
   const instance = i18next.createInstance()
   instance.init({
-    lng: normalizeLocale(locale),
+    lng: normalized,
     fallbackLng: "en",
     supportedLngs: supportedLocales,
     resources,
     initAsync: false,
     interpolation: { escapeValue: false },
   })
+  translators.set(normalized, instance.t)
   return instance.t
 }

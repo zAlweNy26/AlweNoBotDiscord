@@ -394,12 +394,13 @@ describe("buildSummaryEmbed", () => {
         },
       ],
       t,
+      "en",
     )
     expect(embed.footer?.text).toBe("2 messages · from 11:00 to 12:00")
   })
 
   it("keeps the description inside the discord limit", () => {
-    expect(buildSummaryEmbed("x ".repeat(5000), [], t).description.length).toBeLessThanOrEqual(4096)
+    expect(buildSummaryEmbed("x ".repeat(5000), [], t, "en").description.length).toBeLessThanOrEqual(4096)
   })
 })
 
@@ -453,6 +454,31 @@ describe("applyGuildNicknames", () => {
     const named = await applyGuildNicknames(rest, "guild", window)
 
     expect(named.map((message) => message.authorName)).toEqual(["Dany", "Roby", "Dany"])
+  })
+
+  it("looks up authors concurrently", async () => {
+    let active = 0
+    let peak = 0
+    const get = vi.fn(async () => {
+      active += 1
+      peak = Math.max(peak, active)
+      await Promise.resolve()
+      active -= 1
+      return { nick: null }
+    })
+    const rest = { get } as unknown as REST
+    const messages: TranscriptMessage[] = Array.from({ length: 12 }, (_, index) => ({
+      id: String(index + 1),
+      timestamp: "2026-01-01T10:00:00.000Z",
+      authorId: String(index),
+      authorName: "user",
+      content: "x",
+    }))
+
+    await applyGuildNicknames(rest, "guild", messages)
+
+    expect(get).toHaveBeenCalledTimes(12)
+    expect(peak).toBeGreaterThan(1)
   })
 })
 
@@ -779,7 +805,7 @@ describe("runManualSummary", () => {
       { id: "2", content: "second" },
     ])
 
-    const body = await runManualSummary(deps(rest, createSummarize()), "guild", "channel", 10, t)
+    const body = await runManualSummary(deps(rest, createSummarize()), "guild", "channel", 10, t, "en")
 
     expect(body.content).toBe("#summary")
     expect(body.embeds?.[0]?.description).toBe("riassunto")
@@ -788,7 +814,7 @@ describe("runManualSummary", () => {
   it("reports when there is nothing to summarize", async () => {
     const { rest } = createRest([])
 
-    const body = await runManualSummary(deps(rest, createSummarize()), "guild", "channel", 10, t)
+    const body = await runManualSummary(deps(rest, createSummarize()), "guild", "channel", 10, t, "en")
 
     expect(body.embeds?.[0]?.description).toBe("No messages found to summarize.")
   })
@@ -799,7 +825,7 @@ describe("runManualSummary", () => {
       throw new Error("ai down")
     })
 
-    const body = await runManualSummary(deps(rest, summarize), "guild", "channel", 10, t)
+    const body = await runManualSummary(deps(rest, summarize), "guild", "channel", 10, t, "en")
 
     expect(body.embeds?.[0]?.description).toBe("Couldn't create the summary. Please try again later.")
   })

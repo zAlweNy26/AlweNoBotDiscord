@@ -9,7 +9,7 @@ import {
   type SummaryChannel,
   updateSummaryProgress,
 } from "./db"
-import { createTranslator } from "./lib/i18n"
+import { createTranslator, type Locale, normalizeLocale } from "./lib/i18n"
 import { ERROR_COLOR } from "./respond"
 
 const MAX_FAILURES = 3
@@ -21,6 +21,7 @@ const SCAN_LIMIT = 2_000
 const CHUNK_CHARS = 100_000
 const SUMMARY_COLOR = 0x5865f2
 const EMBED_DESCRIPTION_LIMIT = 4096
+const NICKNAME_CONCURRENCY = 5
 
 const SUMMARY_VOICE = `You are the in-house chronicler of a Discord server: quick, funny, merciless about what
 got typed, and allergic to wasting the reader's time.
@@ -249,10 +250,16 @@ export async function applyGuildNicknames(
   messages: TranscriptMessage[],
   nicknames = new Map<string, string | undefined>(),
 ) {
-  for (const message of messages) {
-    if (!nicknames.has(message.authorId)) {
-      nicknames.set(message.authorId, await fetchNickname(rest, guildId, message.authorId))
-    }
+  const pending = [...new Set(messages.map((message) => message.authorId))].filter(
+    (authorId) => !nicknames.has(authorId),
+  )
+  for (let start = 0; start < pending.length; start += NICKNAME_CONCURRENCY) {
+    const batch = pending.slice(start, start + NICKNAME_CONCURRENCY)
+    await Promise.all(
+      batch.map(async (authorId) => {
+        nicknames.set(authorId, await fetchNickname(rest, guildId, authorId))
+      }),
+    )
   }
   return messages.map((message) => {
     const nickname = nicknames.get(message.authorId)
@@ -260,8 +267,8 @@ export async function applyGuildNicknames(
   })
 }
 
-function formatTime(timestamp: string) {
-  return new Intl.DateTimeFormat("it-IT", {
+function formatTime(timestamp: string, locale: Locale) {
+  return new Intl.DateTimeFormat(locale === "it" ? "it-IT" : "en-GB", {
     hour: "2-digit",
     minute: "2-digit",
     timeZone: "Europe/Rome",
@@ -374,7 +381,7 @@ export function clampSummary(text: string, limit = EMBED_DESCRIPTION_LIMIT) {
   return `${(cut > limit - 200 ? head.slice(0, cut) : head).trimEnd()}\u2026`
 }
 
-export function buildSummaryEmbed(summary: string, messages: TranscriptMessage[], t: TFunction) {
+export function buildSummaryEmbed(summary: string, messages: TranscriptMessage[], t: TFunction, locale: Locale) {
   const first = messages[0]
   const last = messages[messages.length - 1]
   return {
@@ -386,7 +393,10 @@ export function buildSummaryEmbed(summary: string, messages: TranscriptMessage[]
         count: messages.length,
         range:
           first && last
-            ? t(($) => $.summary.range, { first: formatTime(first.timestamp), last: formatTime(last.timestamp) })
+            ? t(($) => $.summary.range, {
+                first: formatTime(first.timestamp, locale),
+                last: formatTime(last.timestamp, locale),
+              })
             : t(($) => $.summary.noTimeRange),
       }),
     },
@@ -442,7 +452,7 @@ export async function summarizeWindow(
   random: () => number = Math.random,
 ) {
   const chunks = chunkTranscript(
-    messages.map((message) => `[${formatTime(message.timestamp)}] ${message.authorName}: ${message.content}`),
+    messages.map((message) => `[${formatTime(message.timestamp, "en")}] ${message.authorName}: ${message.content}`),
   )
   const nemesis = pickNemesis(messages, random)
   const closing = nemesis ? `${prompts.reminder}\n${prompts.nemesis(nemesis)}` : prompts.reminder
@@ -648,13 +658,14 @@ async function processChannel(env: Env, deps: SummaryDeps, channel: SummaryChann
     }
 
     const settings = await getGuildSettings(env.DB, channel.guildId)
-    const t = createTranslator(settings?.locale ?? undefined)
+    const locale = normalizeLocale(settings?.locale ?? undefined)
+    const t = createTranslator(locale)
 
     try {
       await deps.rest.post(Routes.channelMessages(channel.channelId), {
         body: {
           content: "@here #summary",
-          embeds: [buildSummaryEmbed(summary, windowMessages, t)],
+          embeds: [buildSummaryEmbed(summary, windowMessages, t, locale)],
         },
       })
     } catch (error) {
@@ -707,6 +718,7 @@ export async function runManualSummary(
   channelId: string,
   needed: number,
   t: TFunction,
+  locale: Locale,
 ) {
   try {
     const messages = await applyGuildNicknames(
@@ -719,7 +731,7 @@ export async function runManualSummary(
     }
     return {
       content: "#summary",
-      embeds: [buildSummaryEmbed(await summarizeWindow(deps.summarize, messages), messages, t)],
+      embeds: [buildSummaryEmbed(await summarizeWindow(deps.summarize, messages), messages, t, locale)],
     }
   } catch (error) {
     console.error(`Manual summary failed for channel ${channelId}`, error)
@@ -735,8 +747,9 @@ export async function runManualSummary(
 }
 
 export async function deliverManualSummary(deps: ManualSummaryDeps, message: ManualSummaryMessage) {
-  const t = createTranslator(message.locale)
-  const body = await runManualSummary(deps, message.guildId, message.channelId, message.needed, t)
+  const locale = normalizeLocale(message.locale)
+  const t = createTranslator(locale)
+  const body = await runManualSummary(deps, message.guildId, message.channelId, message.needed, t, locale)
   await deps.rest.patch(Routes.webhookMessage(deps.applicationId, message.token, "@original"), {
     body,
   })

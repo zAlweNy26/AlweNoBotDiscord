@@ -22,13 +22,41 @@ const OP_INVALID_SESSION = 9
 const OP_HELLO = 10
 const OP_HEARTBEAT_ACK = 11
 
-const RECONNECT_DELAY_MS = 5_000
+const RECONNECT_BASE_MS = 5_000
+const RECONNECT_MAX_MS = 5 * 60 * 1_000
+const RECONNECT_ATTEMPTS_KEY = "reconnectAttempts"
 const COUNTER_DEBOUNCE_MS = 10 * 60 * 1_000
+const MENTION_COOLDOWN_MS = 60_000
+const MENTION_DAILY_LIMIT = 100
 const DEFAULT_HEARTBEAT_INTERVAL_MS = 41_250
 const SESSION_INVALID_CODES = [4004, 4010, 4011, 4012, 4013, 4014]
 
 export function toHttpUrl(url: string) {
   return url.replace(/^wss:/, "https:").replace(/^ws:/, "http:")
+}
+
+export function reconnectDelay(attempt: number, random: () => number = Math.random) {
+  const capped = Math.min(RECONNECT_BASE_MS * 2 ** attempt, RECONNECT_MAX_MS)
+  return Math.round(capped * (0.5 + random() * 0.5))
+}
+
+export interface MentionUsage {
+  lastUsedAt: number | undefined
+  daily: { date: string; count: number } | undefined
+}
+
+export function checkMentionBudget(
+  usage: MentionUsage,
+  now: number,
+  cooldownMs = MENTION_COOLDOWN_MS,
+  dailyLimit = MENTION_DAILY_LIMIT,
+) {
+  const date = new Date(now).toISOString().slice(0, 10)
+  const usedToday = usage.daily?.date === date ? usage.daily.count : 0
+  if (usage.lastUsedAt !== undefined && now - usage.lastUsedAt < cooldownMs) {
+    return { allowed: false, date, count: usedToday }
+  }
+  return { allowed: usedToday < dailyLimit, date, count: usedToday + 1 }
 }
 
 interface GatewayMessage {
@@ -112,6 +140,7 @@ export class GatewayDO {
     }
     if (this.connecting) return
     this.connecting = true
+    this.socket = null
     try {
       await this.loadState()
       const response = await fetch(`${toHttpUrl(this.resumeBase)}/?v=10&encoding=json`, {
@@ -124,18 +153,21 @@ export class GatewayDO {
       socket.accept()
       this.socket = socket
       socket.addEventListener("message", (event) => {
+        if (this.socket !== socket) return
         void this.handleMessage(event.data)
       })
       socket.addEventListener("close", (event) => {
+        if (this.socket !== socket) return
         void this.handleClose(event.code)
       })
       socket.addEventListener("error", () => {
+        if (this.socket !== socket) return
         console.error("Gateway socket error")
       })
     } catch (error) {
       console.error("Gateway connection failed", error)
       this.socket = null
-      await this.scheduleAlarm(RECONNECT_DELAY_MS)
+      await this.scheduleReconnect()
     } finally {
       this.connecting = false
     }
@@ -204,6 +236,7 @@ export class GatewayDO {
       })
     }
     this.awaitingAck = false
+    await this.state.storage.delete(RECONNECT_ATTEMPTS_KEY)
     await this.scheduleAlarm(this.heartbeatInterval)
   }
 
@@ -254,6 +287,7 @@ export class GatewayDO {
     try {
       const settings = await getGuildSettings(this.env.DB, message.guild_id)
       if (!settings?.mentionEnabled) return
+      if (!(await this.allowMention(message.guild_id, message.author.id))) return
       await replyToMention(
         { rest: this.rest, summarize: createSummarizer(this.env.AI) },
         message,
@@ -262,6 +296,21 @@ export class GatewayDO {
     } catch (error) {
       console.error(`Failed to answer a mention in channel ${message.channel_id}`, error)
     }
+  }
+
+  private async allowMention(guildId: string, userId: string) {
+    const now = Date.now()
+    const budget = checkMentionBudget(
+      {
+        lastUsedAt: await this.state.storage.get<number>(`mention-cooldown:${guildId}:${userId}`),
+        daily: await this.state.storage.get<{ date: string; count: number }>(`mention-daily:${guildId}`),
+      },
+      now,
+    )
+    if (!budget.allowed) return false
+    await this.state.storage.put(`mention-cooldown:${guildId}:${userId}`, now)
+    await this.state.storage.put(`mention-daily:${guildId}`, { date: budget.date, count: budget.count })
+    return true
   }
 
   private async handleMemberEvent(kind: "welcome" | "farewell", event: MemberEventData) {
@@ -327,6 +376,12 @@ export class GatewayDO {
     await this.state.storage.setAlarm(Date.now() + delayMs)
   }
 
+  private async scheduleReconnect() {
+    const attempts = (await this.state.storage.get<number>(RECONNECT_ATTEMPTS_KEY)) ?? 0
+    await this.state.storage.put(RECONNECT_ATTEMPTS_KEY, attempts + 1)
+    await this.scheduleAlarm(reconnectDelay(attempts))
+  }
+
   private async loadState() {
     if (this.stateLoaded) return
     this.stateLoaded = true
@@ -349,7 +404,7 @@ export class GatewayDO {
     if (SESSION_INVALID_CODES.includes(code)) {
       await this.resetSession()
     }
-    await this.scheduleAlarm(RECONNECT_DELAY_MS)
+    await this.scheduleReconnect()
   }
 
   private async reconnect() {
@@ -360,6 +415,6 @@ export class GatewayDO {
     } catch {
       // already closed
     }
-    await this.scheduleAlarm(RECONNECT_DELAY_MS)
+    await this.scheduleReconnect()
   }
 }
