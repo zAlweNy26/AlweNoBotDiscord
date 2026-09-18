@@ -1,5 +1,6 @@
 import { type APIGuild, REST, Routes } from "discord.js"
-import { DEFAULT_COUNTER_FORMAT, DEFAULT_FAREWELL_MESSAGE, DEFAULT_WELCOME_MESSAGE, getGuildSettings } from "../db"
+import { getGuildSettings } from "../db"
+import { createTranslator } from "../lib/i18n"
 import { isMentionTrigger, type MentionMessage, replyToMention } from "../mention"
 import { createSummarizer, runSummaryPoll } from "../summary"
 import { fillMessage } from "./messages"
@@ -268,15 +269,17 @@ export class GatewayDO {
     try {
       const settings = await getGuildSettings(this.env.DB, event.guild_id)
       if (!settings) return
+      const t = createTranslator(settings.locale ?? undefined)
       const memberCount = await this.fetchMemberCount(event.guild_id)
       const channelId = kind === "welcome" ? settings.welcomeChannelId : settings.farewellChannelId
 
       if ((kind === "welcome" ? settings.welcomeEnabled : settings.farewellEnabled) && channelId) {
+        const defaultMessage =
+          kind === "welcome" ? t(($) => $.gateway.defaults.welcome) : t(($) => $.gateway.defaults.farewell)
         await this.rest.post(Routes.channelMessages(channelId), {
           body: {
             content: fillMessage(
-              (kind === "welcome" ? settings.welcomeMessage : settings.farewellMessage) ??
-                (kind === "welcome" ? DEFAULT_WELCOME_MESSAGE : DEFAULT_FAREWELL_MESSAGE),
+              (kind === "welcome" ? settings.welcomeMessage : settings.farewellMessage) ?? defaultMessage,
               event.user,
               memberCount,
             ),
@@ -287,7 +290,7 @@ export class GatewayDO {
       if (settings.counterEnabled && settings.counterChannelId) {
         await this.updateCounter(
           settings.counterChannelId,
-          fillMessage(settings.counterFormat ?? DEFAULT_COUNTER_FORMAT, event.user, memberCount),
+          fillMessage(settings.counterFormat ?? t(($) => $.gateway.defaults.counter), event.user, memberCount),
         )
       }
     } catch (error) {

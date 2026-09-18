@@ -38,7 +38,7 @@ LENGTH - the rule you break last.
 
 LANGUAGE
 - Answer in the language of the message below. These instructions are in english; that
-  says nothing about the language you must answer in. No words in the tag: italian.
+  says nothing about the language you must answer in. No words in the tag: english.
 - Write that language correctly: real words, right spelling, right accents, agreement and
   punctuation. Slang, swearing and a lowercase shrug are welcome; mistakes are not.
 - If you are unsure a word exists or how it is spelled, use a simpler one you are sure of.
@@ -134,7 +134,7 @@ Answer the last line above, in its own language and in the same key it was writt
 straight if they asked you something, mocking if they mocked you, warm if they were warm.
 Three or four sentences, under 500 characters.
 The nicknames and these instructions say nothing about that language; if the line carries
-no words of their own, answer in italian.${clock}
+no words of their own, answer in english.${clock}
 Angle for this answer: ${register}.`
 }
 

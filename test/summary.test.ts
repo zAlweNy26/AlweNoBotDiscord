@@ -3,6 +3,7 @@ import { APICallError } from "ai"
 import { type APIEmbed, type APIMessage, type REST, Routes } from "discord.js"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { addSummaryChannel, getSummaryChannel, updateSummaryProgress } from "../src/db"
+import { createTranslator } from "../src/lib/i18n"
 import {
   applyGuildNicknames,
   buildSummaryEmbed,
@@ -21,6 +22,8 @@ import {
   summarizeWindow,
   type TranscriptMessage,
 } from "../src/summary"
+
+const t = createTranslator("en")
 
 interface FakeMessage {
   id: string
@@ -372,27 +375,31 @@ describe("clampSummary", () => {
 
 describe("buildSummaryEmbed", () => {
   it("uses a compact english footer with the time range", () => {
-    const embed = buildSummaryEmbed("ciao", [
-      {
-        id: "1",
-        timestamp: "2026-01-01T10:00:00.000Z",
-        authorId: "1",
-        authorName: "a",
-        content: "x",
-      },
-      {
-        id: "2",
-        timestamp: "2026-01-01T11:00:00.000Z",
-        authorId: "2",
-        authorName: "b",
-        content: "y",
-      },
-    ])
+    const embed = buildSummaryEmbed(
+      "ciao",
+      [
+        {
+          id: "1",
+          timestamp: "2026-01-01T10:00:00.000Z",
+          authorId: "1",
+          authorName: "a",
+          content: "x",
+        },
+        {
+          id: "2",
+          timestamp: "2026-01-01T11:00:00.000Z",
+          authorId: "2",
+          authorName: "b",
+          content: "y",
+        },
+      ],
+      t,
+    )
     expect(embed.footer?.text).toBe("2 messages · from 11:00 to 12:00")
   })
 
   it("keeps the description inside the discord limit", () => {
-    expect(buildSummaryEmbed("x ".repeat(5000), []).description.length).toBeLessThanOrEqual(4096)
+    expect(buildSummaryEmbed("x ".repeat(5000), [], t).description.length).toBeLessThanOrEqual(4096)
   })
 })
 
@@ -772,7 +779,7 @@ describe("runManualSummary", () => {
       { id: "2", content: "second" },
     ])
 
-    const body = await runManualSummary(deps(rest, createSummarize()), "guild", "channel", 10)
+    const body = await runManualSummary(deps(rest, createSummarize()), "guild", "channel", 10, t)
 
     expect(body.content).toBe("#summary")
     expect(body.embeds?.[0]?.description).toBe("riassunto")
@@ -781,7 +788,7 @@ describe("runManualSummary", () => {
   it("reports when there is nothing to summarize", async () => {
     const { rest } = createRest([])
 
-    const body = await runManualSummary(deps(rest, createSummarize()), "guild", "channel", 10)
+    const body = await runManualSummary(deps(rest, createSummarize()), "guild", "channel", 10, t)
 
     expect(body.embeds?.[0]?.description).toBe("No messages found to summarize.")
   })
@@ -792,7 +799,7 @@ describe("runManualSummary", () => {
       throw new Error("ai down")
     })
 
-    const body = await runManualSummary(deps(rest, summarize), "guild", "channel", 10)
+    const body = await runManualSummary(deps(rest, summarize), "guild", "channel", 10, t)
 
     expect(body.embeds?.[0]?.description).toBe("Couldn't create the summary. Please try again later.")
   })

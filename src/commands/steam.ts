@@ -1,4 +1,5 @@
 import { type APIEmbed, type APIEmbedField, SlashCommandBuilder } from "discord.js"
+import type { TFunction } from "i18next"
 import { colorByStatus } from "../lib/colors"
 import { getCountryName } from "../lib/countries"
 import { formatUnixTimestamp } from "../lib/format"
@@ -53,8 +54,8 @@ function isSteamKeyError(error: unknown) {
   return error instanceof Error && (error.message.includes("403") || error.message.includes("401"))
 }
 
-function formatHours(minutes: number) {
-  return `${(minutes / 60).toFixed(1)} ore`
+function formatHours(minutes: number, t: TFunction) {
+  return t(($) => $.commands.steam.hoursPlayed, { hours: (minutes / 60).toFixed(1) })
 }
 
 async function steamGet<T>(path: string, key: string) {
@@ -65,12 +66,12 @@ export const steamCommand: Command = {
   category: "Misc",
   data: new SlashCommandBuilder()
     .setName("steam")
-    .setDescription("Mostra le informazioni di un profilo Steam")
+    .setDescription("Show information for a Steam profile")
     .addStringOption((option) =>
-      option.setName("query").setDescription("Nome personalizzato, URL del profilo o SteamID").setRequired(true),
+      option.setName("query").setDescription("Custom name, profile URL or SteamID").setRequired(true),
     ),
   async execute(context) {
-    const { env, interaction } = context
+    const { env, interaction, t, locale } = context
     const raw = getStringOption(interaction, "query")
     const parsed = raw ? parseSteamInput(raw) : null
     if (!parsed) {
@@ -81,7 +82,7 @@ export const steamCommand: Command = {
           embeds: [
             {
               color: ERROR_COLOR,
-              description: "Specifica un nome personalizzato, un URL del profilo o uno SteamID valido.",
+              description: t(($) => $.commands.steam.invalidInput),
             },
           ],
         },
@@ -93,7 +94,7 @@ export const steamCommand: Command = {
         type: 4,
         data: {
           flags: 64,
-          embeds: [{ color: ERROR_COLOR, description: "🔑 Chiave API di Steam non configurata." }],
+          embeds: [{ color: ERROR_COLOR, description: t(($) => $.commands.steam.keyMissing) }],
         },
       }
     }
@@ -112,7 +113,7 @@ export const steamCommand: Command = {
               embeds: [
                 {
                   color: ERROR_COLOR,
-                  description: `❌ Nessun profilo Steam trovato per **${parsed.name}**.`,
+                  description: t(($) => $.commands.steam.notFound, { query: parsed.name }),
                 },
               ],
             }
@@ -128,7 +129,7 @@ export const steamCommand: Command = {
             embeds: [
               {
                 color: ERROR_COLOR,
-                description: `❌ Nessun profilo Steam trovato per **${raw}**.`,
+                description: t(($) => $.commands.steam.notFound, { query: raw ?? "" }),
               },
             ],
           }
@@ -147,57 +148,65 @@ export const steamCommand: Command = {
         ])
 
         const fields: APIEmbedField[] = [
-          { name: "Nome", value: player.personaname, inline: true },
+          { name: t(($) => $.commands.steam.name), value: player.personaname, inline: true },
           {
-            name: "Livello",
-            value: level?.response.player_level != null ? String(level.response.player_level) : "n/d",
+            name: t(($) => $.commands.steam.level),
+            value:
+              level?.response.player_level != null
+                ? String(level.response.player_level)
+                : t(($) => $.common.notAvailable),
             inline: true,
           },
           {
-            name: "Amici",
-            value: friends?.friendslist ? String(friends.friendslist.friends.length) : "Privati",
+            name: t(($) => $.commands.steam.friends),
+            value: friends?.friendslist
+              ? String(friends.friendslist.friends.length)
+              : t(($) => $.commands.steam.private),
             inline: true,
           },
           {
-            name: "Giochi giocati",
-            value: owned?.response.game_count != null ? String(owned.response.game_count) : "n/d",
+            name: t(($) => $.commands.steam.gamesPlayed),
+            value:
+              owned?.response.game_count != null ? String(owned.response.game_count) : t(($) => $.common.notAvailable),
             inline: true,
           },
         ]
 
         if (player.gameextrainfo) {
-          fields.push({ name: "In gioco", value: player.gameextrainfo, inline: true })
+          fields.push({ name: t(($) => $.commands.steam.playing), value: player.gameextrainfo, inline: true })
           const current = owned?.response.games?.find((game) => String(game.appid) === player.gameid)
           if (current) {
             fields.push({
-              name: "Ore nel gioco",
-              value: formatHours(current.playtime_forever),
+              name: t(($) => $.commands.steam.hoursInGame),
+              value: formatHours(current.playtime_forever, t),
               inline: true,
             })
           }
         }
 
         fields.push({
-          name: "Provenienza",
-          value: player.loccountrycode ? getCountryName(player.loccountrycode) : "Sconosciuta",
+          name: t(($) => $.commands.steam.country),
+          value: player.loccountrycode ? getCountryName(player.loccountrycode, locale) : t(($) => $.common.unknown),
           inline: true,
         })
         if (player.timecreated) {
           fields.push({
-            name: "Account creato il",
-            value: formatUnixTimestamp(player.timecreated),
+            name: t(($) => $.commands.steam.accountCreated),
+            value: formatUnixTimestamp(player.timecreated, locale),
             inline: true,
           })
         }
 
         const embed: APIEmbed = {
           color: colorByStatus(player.personastate),
-          author: { name: `Informazioni su ${player.personaname}` },
+          author: { name: t(($) => $.commands.steam.author, { player: player.personaname }) },
           thumbnail: { url: player.avatarfull },
           fields,
         }
         if (player.lastlogoff) {
-          embed.footer = { text: `Ultimo accesso: ${formatUnixTimestamp(player.lastlogoff)}` }
+          embed.footer = {
+            text: t(($) => $.commands.steam.lastOnline, { date: formatUnixTimestamp(player.lastlogoff, locale) }),
+          }
         }
         return { embeds: [embed] }
       } catch (error) {
@@ -206,7 +215,7 @@ export const steamCommand: Command = {
             embeds: [
               {
                 color: ERROR_COLOR,
-                description: "🔑 Chiave API di Steam non valida o non configurata.",
+                description: t(($) => $.commands.steam.keyInvalid),
               },
             ],
           }

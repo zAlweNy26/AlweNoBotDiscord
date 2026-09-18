@@ -62,14 +62,16 @@ YOUTUBE_API_KEY=
 ## Commands
 
 - Info: `/ping`, `/info`, `/server`, `/activity`, `/stats` (owner only)
-- Mod: `/help`, `/clear`, `/welcome`, `/farewell`, `/counter`, `/mention`, `/summary`, `/reactionrole`
+- Mod: `/help`, `/clear`, `/welcome`, `/farewell`, `/counter`, `/mention`, `/language`, `/summary`, `/reactionrole`
 - Misc: `/color`, `/crypto`, `/distance`, `/weather`, `/steam`, `/steamgame`, `/ytinfo`
 
 ## Notes
 
 - The privileged **Message Content Intent** must be enabled for `/summary`: without it, the Discord API returns empty `content` for channel history. The AI summaries run on Workers AI (`AI` binding) with `@cf/zai-org/glm-5.3-flash`.
+- `/summary manual` is available to every member; the other `/summary` subcommands require the **Manage Server** permission.
 - `/summary manual` and `/activity` are processed through Cloudflare Queues (`alwenobot_summary`): the deferred reply is patched as soon as the work is done, so long channel scans never hit the interaction timeout and never hold a request open. Both share the one queue and are told apart by the `kind` field on the message; a message without `kind` is treated as a summary. Automatic summaries are unchanged.
-- `/mention enable` lets the bot answer whoever tags it, in the voice of the summaries pitched to the message it is answering (same Workers AI model, one reply per tag). It is off by default and configured per server; `/mention mostra` shows the current state. The reply needs the gateway to receive `MESSAGE_CREATE`, which the Durable Object subscribes to through the (non-privileged) **Guild Messages** intent — nothing to enable in the portal. Intents are frozen when a gateway session identifies, so the first reconnect after this deploy identifies from scratch instead of resuming.
+- `/mention enable` lets the bot answer whoever tags it, in the voice of the summaries pitched to the message it is answering (same Workers AI model, one reply per tag). It is off by default and configured per server; `/mention show` shows the current state. The reply needs the gateway to receive `MESSAGE_CREATE`, which the Durable Object subscribes to through the (non-privileged) **Guild Messages** intent — nothing to enable in the portal. Intents are frozen when a gateway session identifies, so the first reconnect after this deploy identifies from scratch instead of resuming.
 - Automatic summaries start with `@here #summary` in the message content. The `@here` ping requires the **Mention @everyone, @here and all roles** permission (without it the mention is posted without notifying). Search `summary` (or `#summary`) to list past summaries.
 - The member counter channel rename is debounced (10 minutes) to stay well inside Discord rate limits.
-- Legacy `steam_countries.min.json` was replaced by the `src/lib/countries.ts` map; the counter format supports `{{membri}}`.
+- Commands reply in the invoker's Discord client locale. Server-scoped texts — welcome, farewell and counter defaults, and the localized slash-command descriptions — follow the locale stored per guild, set with `/language`. AI-generated summaries and tag replies follow the language of the messages they answer.
+- Legacy `steam_countries.min.json` was replaced by `Intl.DisplayNames` (`src/lib/countries.ts`); the counter format supports `{{membri}}`.

@@ -1,34 +1,65 @@
-const WEATHER_DESCRIPTIONS: Record<number, string> = {
-  0: "Cielo sereno",
-  1: "Prevalentemente sereno",
-  2: "Parzialmente nuvoloso",
-  3: "Cielo coperto",
-  45: "Nebbia",
-  48: "Nebbia con brina",
-  51: "Pioviggine leggera",
-  53: "Pioviggine moderata",
-  55: "Pioviggine intensa",
-  56: "Pioviggine gelata leggera",
-  57: "Pioviggine gelata intensa",
-  61: "Pioggia leggera",
-  63: "Pioggia moderata",
-  65: "Pioggia intensa",
-  66: "Pioggia gelata leggera",
-  67: "Pioggia gelata intensa",
-  71: "Neve leggera",
-  73: "Neve moderata",
-  75: "Neve intensa",
-  77: "Granelli di neve",
-  80: "Rovesci di pioggia leggeri",
-  81: "Rovesci di pioggia moderati",
-  82: "Rovesci di pioggia violenti",
-  85: "Rovesci di neve leggeri",
-  86: "Rovesci di neve intensi",
-  95: "Temporale",
-  96: "Temporale con grandine leggera",
-  99: "Temporale con grandine intensa",
+export type WeatherCodeKey =
+  | "code0"
+  | "code1"
+  | "code2"
+  | "code3"
+  | "code45"
+  | "code48"
+  | "code51"
+  | "code53"
+  | "code55"
+  | "code56"
+  | "code57"
+  | "code61"
+  | "code63"
+  | "code65"
+  | "code66"
+  | "code67"
+  | "code71"
+  | "code73"
+  | "code75"
+  | "code77"
+  | "code80"
+  | "code81"
+  | "code82"
+  | "code85"
+  | "code86"
+  | "code95"
+  | "code96"
+  | "code99"
+  | "unknown"
+
+const CODE_KEYS: Record<number, Exclude<WeatherCodeKey, "unknown">> = {
+  0: "code0",
+  1: "code1",
+  2: "code2",
+  3: "code3",
+  45: "code45",
+  48: "code48",
+  51: "code51",
+  53: "code53",
+  55: "code55",
+  56: "code56",
+  57: "code57",
+  61: "code61",
+  63: "code63",
+  65: "code65",
+  66: "code66",
+  67: "code67",
+  71: "code71",
+  73: "code73",
+  75: "code75",
+  77: "code77",
+  80: "code80",
+  81: "code81",
+  82: "code82",
+  85: "code85",
+  86: "code86",
+  95: "code95",
+  96: "code96",
+  99: "code99",
 }
 
-export function describeWeatherCode(code: number) {
-  return WEATHER_DESCRIPTIONS[code] ?? "Condizioni sconosciute"
+export function weatherCodeKey(code: number): WeatherCodeKey {
+  return CODE_KEYS[code] ?? "unknown"
 }

@@ -1,4 +1,5 @@
 import { type APIEmbed, Routes } from "discord.js"
+import { discordErrorKey } from "../lib/discord-errors"
 import { deferredResponse, ERROR_COLOR } from "../respond"
 import type { CommandContext } from "./types"
 
@@ -15,11 +16,12 @@ export function runDeferred(context: CommandContext, work: () => Promise<Deferre
         body = await work()
       } catch (error) {
         console.error("Deferred command failed", error)
+        const key = discordErrorKey(error)
         body = {
           embeds: [
             {
               color: ERROR_COLOR,
-              description: "Si è verificato un errore durante l'esecuzione del comando.",
+              description: key ? context.t(($) => $.errors[key]) : context.t(($) => $.common.commandError),
             },
           ],
         }

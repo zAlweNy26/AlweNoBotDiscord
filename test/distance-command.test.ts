@@ -6,6 +6,7 @@ import {
 } from "discord.js"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { distanceCommand } from "../src/commands/distance"
+import { createTranslator } from "../src/lib/i18n"
 
 const MILANO = { name: "Milano", latitude: 45.46427, longitude: 9.18951, admin1: "Lombardia", country: "Italia" }
 const ROMA = { name: "Roma", latitude: 41.9028, longitude: 12.4964, admin1: "Lazio", country: "Italia" }
@@ -51,6 +52,8 @@ async function run(options: { name: string; value: string }[]) {
 
   distanceCommand.execute({
     env: { DISCORD_APPLICATION_ID: "app" } as unknown as Env,
+    t: createTranslator("en"),
+    locale: "en",
     rest: { patch } as unknown as REST,
     interaction: createInteraction(options),
     waitUntil: (promise) => {
@@ -63,8 +66,8 @@ async function run(options: { name: string; value: string }[]) {
 }
 
 const DEFAULT_OPTIONS = [
-  { name: "partenza", value: "Milano" },
-  { name: "destinazione", value: "Roma" },
+  { name: "from", value: "Milano" },
+  { name: "to", value: "Roma" },
 ]
 
 function geocodeBoth(place: string) {
@@ -85,9 +88,9 @@ describe("distanceCommand", () => {
 
     const embed = await run(DEFAULT_OPTIONS)
 
-    expect(embed?.fields?.[0]).toMatchObject({ name: "Distanza", value: "572.5 km" })
-    expect(embed?.fields?.[1]).toMatchObject({ name: "Durata stimata", value: "5 h 59 min" })
-    expect(embed?.fields?.[2]).toMatchObject({ name: "Mezzo usato", value: "Auto" })
+    expect(embed?.fields?.[0]).toMatchObject({ name: "Distance", value: "572.5 km" })
+    expect(embed?.fields?.[1]).toMatchObject({ name: "Estimated duration", value: "5 h 59 min" })
+    expect(embed?.fields?.[2]).toMatchObject({ name: "Mode", value: "Car" })
     expect(calls.at(-1)).toContain("/routed-car/")
   })
 
@@ -99,13 +102,13 @@ describe("distanceCommand", () => {
     expect(calls.at(-1)).toContain("/route/v1/driving/9.18951,45.46427;12.4964,41.9028")
   })
 
-  it("uses the walking profile when mezzo is piedi", async () => {
+  it("uses the walking profile when mode is walk", async () => {
     const calls = stubFetch({ geocoding: geocodeBoth, routing: okRoute(1168.1, 934.7) })
 
-    const embed = await run([...DEFAULT_OPTIONS, { name: "mezzo", value: "piedi" }])
+    const embed = await run([...DEFAULT_OPTIONS, { name: "mode", value: "walk" }])
 
     expect(calls.at(-1)).toContain("/routed-foot/")
-    expect(embed?.fields?.[2]).toMatchObject({ name: "Mezzo usato", value: "A piedi" })
+    expect(embed?.fields?.[2]).toMatchObject({ name: "Mode", value: "Walking" })
   })
 
   it("resolves both endpoints to their full place names", async () => {
@@ -113,16 +116,16 @@ describe("distanceCommand", () => {
 
     const embed = await run(DEFAULT_OPTIONS)
 
-    expect(embed?.fields?.[3]).toMatchObject({ name: "Partenza", value: "Milano, Lombardia, Italia" })
-    expect(embed?.fields?.[4]).toMatchObject({ name: "Destinazione", value: "Roma, Lazio, Italia" })
+    expect(embed?.fields?.[3]).toMatchObject({ name: "From", value: "Milano, Lombardia, Italia" })
+    expect(embed?.fields?.[4]).toMatchObject({ name: "To", value: "Roma, Lazio, Italia" })
   })
 
   it("names the endpoint that could not be geocoded", async () => {
     stubFetch({ geocoding: (place) => (place === "Milano" ? MILANO : undefined), routing: okRoute(1000, 60) })
 
-    const embed = await run([...DEFAULT_OPTIONS.slice(0, 1), { name: "destinazione", value: "Asdfgh" }])
+    const embed = await run([...DEFAULT_OPTIONS.slice(0, 1), { name: "to", value: "Asdfgh" }])
 
-    expect(embed?.description).toBe("Nessun risultato per **Asdfgh**.")
+    expect(embed?.description).toBe("No results for **Asdfgh**.")
   })
 
   it("reports no route when OSRM answers with an error code", async () => {
@@ -130,7 +133,7 @@ describe("distanceCommand", () => {
 
     const embed = await run(DEFAULT_OPTIONS)
 
-    expect(embed?.description).toBe("Nessun percorso trovato per le località indicate.")
+    expect(embed?.description).toBe("No route found for the given places.")
   })
 
   it("reports the service as unavailable when OSRM fails", async () => {
@@ -145,6 +148,6 @@ describe("distanceCommand", () => {
 
     const embed = await run(DEFAULT_OPTIONS)
 
-    expect(embed?.description).toBe("Servizio momentaneamente non disponibile, riprova più tardi.")
+    expect(embed?.description).toBe("Service temporarily unavailable, please try again later.")
   })
 })

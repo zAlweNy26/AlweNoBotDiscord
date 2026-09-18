@@ -1,9 +1,16 @@
 import { createExecutionContext, createMessageBatch, env, getQueueResult } from "cloudflare:test"
 import { exports } from "cloudflare:workers"
-import { type APIChatInputApplicationCommandInteraction, InteractionResponseType, type REST } from "discord.js"
+import {
+  type APIChatInputApplicationCommandInteraction,
+  InteractionResponseType,
+  PermissionFlagsBits,
+  type REST,
+} from "discord.js"
 import { describe, expect, it, vi } from "vitest"
 import { summaryCommand } from "../src/commands/summary"
 import { handleQueueBatch, type QueuedJob } from "../src/index"
+import { createTranslator } from "../src/lib/i18n"
+import { ephemeralEmbed, ephemeralError, SUCCESS_COLOR } from "../src/respond"
 import type { ManualSummaryDeps } from "../src/summary"
 
 function createDeps(options: { patchFails?: boolean } = {}): ManualSummaryDeps {
@@ -44,6 +51,8 @@ describe("summary manual command", () => {
   it("queues the summary through the configured queue binding", async () => {
     const response = await summaryCommand.execute({
       env,
+      t: createTranslator("en"),
+      locale: "en",
       rest: {} as unknown as REST,
       interaction: {
         guild_id: "guild",
@@ -65,6 +74,44 @@ describe("summary manual command", () => {
     })
 
     expect(response.type).toBe(InteractionResponseType.DeferredChannelMessageWithSource)
+  })
+})
+
+describe("summary command permissions", () => {
+  function createInteraction(subcommand: string, permissions?: string) {
+    return {
+      guild_id: "guild",
+      channel_id: "channel",
+      token: "token",
+      member: { user: { id: "1" }, permissions },
+      data: { name: "summary", type: 1, options: [{ type: 1, name: subcommand }] },
+    } as unknown as APIChatInputApplicationCommandInteraction
+  }
+
+  it("rejects management subcommands for members without Manage Server", async () => {
+    const response = await summaryCommand.execute({
+      env,
+      t: createTranslator("en"),
+      locale: "en",
+      rest: {} as unknown as REST,
+      interaction: createInteraction("list", "0"),
+      waitUntil: vi.fn(),
+    })
+
+    expect(response).toEqual(ephemeralError("You need the **Manage Server** permission to configure summaries."))
+  })
+
+  it("allows management subcommands for members with Manage Server", async () => {
+    const response = await summaryCommand.execute({
+      env,
+      t: createTranslator("en"),
+      locale: "en",
+      rest: {} as unknown as REST,
+      interaction: createInteraction("list", PermissionFlagsBits.ManageGuild.toString()),
+      waitUntil: vi.fn(),
+    })
+
+    expect(response).toEqual(ephemeralEmbed({ color: SUCCESS_COLOR, description: "No summarization configured." }))
   })
 })
 
@@ -108,7 +155,7 @@ describe("handleQueueBatch", () => {
       }),
     } as unknown as REST
     const summarize = vi.fn(async () => "riassunto")
-    const batch = createBatch({ kind: "activity", channelId: "channel", token: "token" })
+    const batch = createBatch({ kind: "activity", channelId: "channel", token: "token", locale: "en" })
     const ctx = createExecutionContext()
 
     await handleQueueBatch(batch, { rest, summarize, applicationId: "app" })
@@ -116,6 +163,6 @@ describe("handleQueueBatch", () => {
     const result = await getQueueResult(batch, ctx)
     expect(result.explicitAcks).toContain("message-1")
     expect(summarize).not.toHaveBeenCalled()
-    expect(patched[0]?.embeds[0]?.title).toBe("📊 Utenti più attivi")
+    expect(patched[0]?.embeds[0]?.title).toBe("📊 Most active users")
   })
 })

@@ -2,11 +2,13 @@ import {
   type APIApplicationCommandInteractionDataSubcommandOption,
   type APIMessage,
   ApplicationCommandOptionType,
+  ChannelType,
   PermissionFlagsBits,
   Routes,
   SlashCommandBuilder,
 } from "discord.js"
 import { addSummaryChannel, getSummaryChannel, listSummaryChannelsForGuild, removeSummaryChannel } from "../db"
+import { permissionErrorMessage } from "../lib/discord-errors"
 import { deferredResponse, ephemeralEmbed, ephemeralError, SUCCESS_COLOR } from "../respond"
 import { getSummaryStatus } from "../summary"
 import type { Command } from "./types"
@@ -45,13 +47,16 @@ export const summaryCommand: Command = {
   data: new SlashCommandBuilder()
     .setName("summary")
     .setDescription("Configure automatic channel summaries")
-    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
     .addSubcommand((subcommand) =>
       subcommand
         .setName("add")
         .setDescription("Start summarizing a channel")
         .addChannelOption((option) =>
-          option.setName("channel").setDescription("Channel to summarize").setRequired(true),
+          option
+            .setName("channel")
+            .setDescription("Channel to summarize")
+            .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement)
+            .setRequired(true),
         )
         .addIntegerOption((option) =>
           option
@@ -66,7 +71,11 @@ export const summaryCommand: Command = {
         .setName("remove")
         .setDescription("Stop summarizing a channel")
         .addChannelOption((option) =>
-          option.setName("channel").setDescription("Channel to stop summarizing").setRequired(true),
+          option
+            .setName("channel")
+            .setDescription("Channel to stop summarizing")
+            .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement)
+            .setRequired(true),
         ),
     )
     .addSubcommand((subcommand) => subcommand.setName("list").setDescription("List summarized channels"))
@@ -87,21 +96,30 @@ export const summaryCommand: Command = {
         ),
     ),
   async execute(context) {
-    const { env, rest, interaction } = context
+    const { env, rest, interaction, t, locale } = context
     const guildId = interaction.guild_id
     if (!guildId) {
-      return ephemeralError("This command can only be used in a server.")
+      return ephemeralError(t(($) => $.common.guildOnly))
     }
     const subcommand = getSubcommand(interaction)
     if (!subcommand) {
-      return ephemeralError("Invalid subcommand.")
+      return ephemeralError(t(($) => $.commands.summary.invalidSubcommand))
+    }
+    if (subcommand.name !== "manual") {
+      const permissions = interaction.member?.permissions
+      const hasManageGuild =
+        permissions !== undefined &&
+        (BigInt(permissions) & PermissionFlagsBits.ManageGuild) === PermissionFlagsBits.ManageGuild
+      if (!hasManageGuild) {
+        return ephemeralError(t(($) => $.commands.summary.manageGuildRequired))
+      }
     }
 
     switch (subcommand.name) {
       case "add": {
         const channelId = getChannelId(subcommand)
         if (!channelId) {
-          return ephemeralError("Invalid channel.")
+          return ephemeralError(t(($) => $.commands.summary.invalidChannel))
         }
         const requested = getSubOption(subcommand, "threshold", ApplicationCommandOptionType.Integer)
         const threshold =
@@ -117,30 +135,30 @@ export const summaryCommand: Command = {
             )[0]?.id ?? "0"
         } catch (error) {
           console.error(`Failed to read baseline for channel ${channelId}`, error)
-          return ephemeralError("I can't read messages in that channel. Check that I have access and try again.")
+          return ephemeralError(t(($) => $.commands.summary.readError))
         }
 
         await addSummaryChannel(env.DB, guildId, channelId, threshold, baseline)
         return ephemeralEmbed({
           color: SUCCESS_COLOR,
-          description: `Summarization enabled in <#${channelId}> every ${threshold} messages. Only messages sent from now on will be counted.`,
+          description: t(($) => $.commands.summary.enabled, { channelId, threshold }),
         })
       }
       case "remove": {
         const channelId = getChannelId(subcommand)
         if (!channelId) {
-          return ephemeralError("Invalid channel.")
+          return ephemeralError(t(($) => $.commands.summary.invalidChannel))
         }
         if (!(await getSummaryChannel(env.DB, guildId, channelId))) {
           return ephemeralEmbed({
             color: SUCCESS_COLOR,
-            description: `No summarization is configured for <#${channelId}>.`,
+            description: t(($) => $.commands.summary.notConfigured, { channelId }),
           })
         }
         await removeSummaryChannel(env.DB, guildId, channelId)
         return ephemeralEmbed({
           color: SUCCESS_COLOR,
-          description: `Summarization disabled for <#${channelId}>.`,
+          description: t(($) => $.commands.summary.disabled, { channelId }),
         })
       }
       case "list": {
@@ -148,13 +166,15 @@ export const summaryCommand: Command = {
         if (rows.length === 0) {
           return ephemeralEmbed({
             color: SUCCESS_COLOR,
-            description: "No summarization configured.",
+            description: t(($) => $.commands.summary.nothing),
           })
         }
         return ephemeralEmbed({
           color: SUCCESS_COLOR,
-          title: "📝 Summarized channels",
-          description: rows.map((row) => `<#${row.channelId}> — every ${row.threshold} messages`).join("\n"),
+          title: t(($) => $.commands.summary.listTitle),
+          description: rows
+            .map((row) => t(($) => $.commands.summary.listRow, { channelId: row.channelId, threshold: row.threshold }))
+            .join("\n"),
         })
       }
       case "status": {
@@ -162,25 +182,35 @@ export const summaryCommand: Command = {
         if (rows.length === 0) {
           return ephemeralEmbed({
             color: SUCCESS_COLOR,
-            description: "No summarization configured.",
+            description: t(($) => $.commands.summary.nothing),
           })
         }
         return ephemeralEmbed({
           color: SUCCESS_COLOR,
-          title: "📝 Summary status",
+          title: t(($) => $.commands.summary.statusTitle),
           description: (
             await Promise.all(
               rows.map(async (row) => {
                 try {
                   const status = await getSummaryStatus(rest, row)
-                  const progress = `${status.counted} / ${row.threshold} messages`
+                  const progress = t(($) => $.commands.summary.progress, {
+                    counted: status.counted,
+                    threshold: row.threshold,
+                  })
                   if (status.ready) {
-                    return `<#${row.channelId}> — ${progress} · ready`
+                    return t(($) => $.commands.summary.statusReady, {
+                      channelId: row.channelId,
+                      progress,
+                    })
                   }
-                  return `<#${row.channelId}> — ${progress} · ${row.threshold - status.counted} to go`
+                  return t(($) => $.commands.summary.statusToGo, {
+                    channelId: row.channelId,
+                    progress,
+                    count: row.threshold - status.counted,
+                  })
                 } catch (error) {
                   console.error(`Failed to read status for channel ${row.channelId}`, error)
-                  return `<#${row.channelId}> — couldn't read channel`
+                  return t(($) => $.commands.summary.noAccess, { channelId: row.channelId })
                 }
               }),
             )
@@ -190,7 +220,11 @@ export const summaryCommand: Command = {
       case "manual": {
         const channelId = interaction.channel_id
         if (!channelId) {
-          return ephemeralError("Invalid channel.")
+          return ephemeralError(t(($) => $.commands.summary.invalidChannel))
+        }
+        const permissionError = permissionErrorMessage(t, locale, interaction, PermissionFlagsBits.ReadMessageHistory)
+        if (permissionError) {
+          return ephemeralError(permissionError)
         }
         const requested = getSubOption(subcommand, "messages", ApplicationCommandOptionType.Integer)
         const needed = typeof requested === "number" ? clamp(requested, MIN_THRESHOLD, MAX_THRESHOLD) : MIN_THRESHOLD
@@ -201,15 +235,16 @@ export const summaryCommand: Command = {
             channelId,
             needed,
             token: interaction.token,
+            locale,
           })
         } catch (error) {
           console.error(`Failed to queue manual summary for channel ${channelId}`, error)
-          return ephemeralError("Couldn't queue the summary. Please try again later.")
+          return ephemeralError(t(($) => $.commands.summary.queueError))
         }
         return deferredResponse()
       }
       default:
-        return ephemeralError("Invalid subcommand.")
+        return ephemeralError(t(($) => $.commands.summary.invalidSubcommand))
     }
   },
 }

@@ -3,22 +3,22 @@ import { embedResponse, SUCCESS_COLOR } from "../respond"
 import { commands } from "./registry"
 import type { Command, CommandCategory } from "./types"
 
-const CATEGORY_LABELS: Record<CommandCategory, string> = {
-  Mod: "🛠️ Moderazione",
-  Info: "ℹ️ Informazioni",
-  Misc: "🎲 Varie",
+const CATEGORY_KEYS: Record<CommandCategory, "mod" | "info" | "misc"> = {
+  Mod: "mod",
+  Info: "info",
+  Misc: "misc",
 }
 
 export const helpCommand: Command = {
   category: "Mod",
-  data: new SlashCommandBuilder().setName("help").setDescription("Mostra l'elenco dei comandi"),
+  data: new SlashCommandBuilder().setName("help").setDescription("Show the command list"),
 
-  execute() {
+  execute({ t }) {
     return embedResponse({
       color: SUCCESS_COLOR,
-      title: "📖 Comandi disponibili",
-      fields: (Object.keys(CATEGORY_LABELS) as CommandCategory[]).map((category) => ({
-        name: CATEGORY_LABELS[category],
+      title: t(($) => $.commands.help.title),
+      fields: (Object.keys(CATEGORY_KEYS) as CommandCategory[]).map((category) => ({
+        name: t(($) => $.commands.help.categories[CATEGORY_KEYS[category]]),
         value:
           commands
             .filter((command) => command.category === category)

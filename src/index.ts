@@ -1,6 +1,7 @@
 import { type APIInteraction, InteractionType, REST } from "discord.js"
 import { type ActivityReportMessage, deliverActivityReport } from "./commands/activity"
 import { GatewayDO } from "./gateway/GatewayDO"
+import { createTranslator } from "./lib/i18n"
 import { ephemeralError } from "./respond"
 import { routeInteraction } from "./router"
 import { createSummarizer, deliverManualSummary, type ManualSummaryDeps, type ManualSummaryMessage } from "./summary"
@@ -36,7 +37,8 @@ async function handleInteractions(request: Request, env: Env, ctx: ExecutionCont
     )
   } catch (error) {
     console.error("Interaction handling failed", error)
-    return Response.json(ephemeralError("Si è verificato un errore durante l'esecuzione del comando."))
+    const t = createTranslator(interaction.locale)
+    return Response.json(ephemeralError(t(($) => $.common.interactionError)))
   }
 }
 

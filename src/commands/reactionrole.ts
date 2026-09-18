@@ -6,12 +6,15 @@ import {
   ApplicationCommandOptionType,
   ButtonBuilder,
   ButtonStyle,
+  ChannelType,
   PermissionFlagsBits,
   type REST,
   Routes,
   SlashCommandBuilder,
 } from "discord.js"
+import type { TFunction } from "i18next"
 import { addRoleButton, deleteRoleButtonsForMessage, getRoleButton } from "../db"
+import { permissionErrorMessage } from "../lib/discord-errors"
 import { ERROR_COLOR, ephemeralEmbed, ephemeralError, SUCCESS_COLOR } from "../respond"
 import type { Command } from "./types"
 
@@ -31,22 +34,34 @@ function getSubOption(
   return typeof option.value === "string" ? option.value : undefined
 }
 
-export async function handleRoleButton(context: { env: Env; rest: REST }, interaction: APIMessageComponentInteraction) {
+export async function handleRoleButton(
+  context: { env: Env; rest: REST; t: TFunction; locale: string },
+  interaction: APIMessageComponentInteraction,
+) {
   const customId = interaction.data.custom_id
   if (!customId.startsWith(CUSTOM_ID_PREFIX)) {
-    return ephemeralError("Pulsante non riconosciuto.")
+    return ephemeralError(context.t(($) => $.commands.reactionrole.unknownButton))
   }
   const roleId = customId.slice(CUSTOM_ID_PREFIX.length)
   const guildId = interaction.guild_id
   if (!guildId) {
-    return ephemeralError("Questo pulsante può essere usato solo in un server.")
+    return ephemeralError(context.t(($) => $.commands.reactionrole.buttonGuildOnly))
   }
   if (!(await getRoleButton(context.env.DB, interaction.message.id, roleId))) {
-    return ephemeralError("Questo pulsante non è più attivo.")
+    return ephemeralError(context.t(($) => $.commands.reactionrole.inactive))
   }
   const userId = interaction.user?.id
   if (!userId) {
-    return ephemeralError("Impossibile identificare l'utente.")
+    return ephemeralError(context.t(($) => $.commands.reactionrole.noUser))
+  }
+  const permissionError = permissionErrorMessage(
+    context.t,
+    context.locale,
+    interaction,
+    PermissionFlagsBits.ManageRoles,
+  )
+  if (permissionError) {
+    return ephemeralError(permissionError)
   }
   const hasRole = interaction.member?.roles.includes(roleId) ?? false
   try {
@@ -58,12 +73,14 @@ export async function handleRoleButton(context: { env: Env; rest: REST }, intera
   } catch {
     return ephemeralEmbed({
       color: ERROR_COLOR,
-      description: "❌ Non posso modificare questo ruolo: controlla i permessi del bot e la gerarchia dei ruoli.",
+      description: context.t(($) => $.commands.reactionrole.cannotModify),
     })
   }
   return ephemeralEmbed({
     color: SUCCESS_COLOR,
-    description: hasRole ? `✅ Ruolo <@&${roleId}> rimosso.` : `✅ Ruolo <@&${roleId}> aggiunto.`,
+    description: hasRole
+      ? context.t(($) => $.commands.reactionrole.roleRemoved, { roleId })
+      : context.t(($) => $.commands.reactionrole.roleAdded, { roleId }),
   })
 }
 
@@ -71,47 +88,55 @@ export const reactionroleCommand: Command = {
   category: "Mod",
   data: new SlashCommandBuilder()
     .setName("reactionrole")
-    .setDescription("Crea o rimuovi messaggi con pulsanti per assegnare ruoli")
+    .setDescription("Create or remove button messages that grant roles")
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageRoles)
     .addSubcommand((subcommand) =>
       subcommand
         .setName("create")
-        .setDescription("Pubblica un messaggio con un pulsante che assegna un ruolo")
+        .setDescription("Post a message with a button that grants a role")
         .addChannelOption((option) =>
-          option.setName("canale").setDescription("Canale in cui pubblicare").setRequired(true),
+          option
+            .setName("channel")
+            .setDescription("Channel to post in")
+            .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement)
+            .setRequired(true),
         )
-        .addRoleOption((option) => option.setName("ruolo").setDescription("Ruolo da assegnare").setRequired(true))
-        .addStringOption((option) => option.setName("testo").setDescription("Testo del pulsante").setRequired(false)),
+        .addRoleOption((option) => option.setName("role").setDescription("Role to grant").setRequired(true))
+        .addStringOption((option) => option.setName("label").setDescription("Button label").setRequired(false)),
     )
     .addSubcommand((subcommand) =>
       subcommand
         .setName("delete")
-        .setDescription("Rimuove le associazioni di un messaggio con pulsanti")
-        .addChannelOption((option) => option.setName("canale").setDescription("Canale del messaggio").setRequired(true))
-        .addStringOption((option) =>
-          option.setName("messaggio").setDescription("ID o link del messaggio").setRequired(true),
-        ),
+        .setDescription("Remove a message's button associations")
+        .addChannelOption((option) =>
+          option
+            .setName("channel")
+            .setDescription("Channel of the message")
+            .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement)
+            .setRequired(true),
+        )
+        .addStringOption((option) => option.setName("message").setDescription("Message ID or link").setRequired(true)),
     ),
   async execute(context) {
-    const { env, interaction } = context
+    const { env, interaction, t } = context
     const guildId = interaction.guild_id
     if (!guildId) {
-      return ephemeralError("Questo comando può essere usato solo in un server.")
+      return ephemeralError(t(($) => $.common.guildOnly))
     }
     const subcommand = interaction.data.options?.[0]
     if (subcommand?.type !== ApplicationCommandOptionType.Subcommand) {
-      return ephemeralError("Azione non valida.")
+      return ephemeralError(t(($) => $.commands.reactionrole.invalidAction))
     }
     if (subcommand.name === "create") {
-      const channelId = getSubOption(subcommand, "canale", ApplicationCommandOptionType.Channel)
-      const roleId = getSubOption(subcommand, "ruolo", ApplicationCommandOptionType.Role)
+      const channelId = getSubOption(subcommand, "channel", ApplicationCommandOptionType.Channel)
+      const roleId = getSubOption(subcommand, "role", ApplicationCommandOptionType.Role)
       if (!channelId || !roleId) {
-        return ephemeralError("Specifica un canale e un ruolo.")
+        return ephemeralError(t(($) => $.commands.reactionrole.missingArgs))
       }
       const label =
-        getSubOption(subcommand, "testo", ApplicationCommandOptionType.String) ??
+        getSubOption(subcommand, "label", ApplicationCommandOptionType.String) ??
         interaction.data.resolved?.roles?.[roleId]?.name ??
-        "Ruolo"
+        t(($) => $.commands.reactionrole.defaultLabel)
       await addRoleButton(env.DB, {
         messageId: (
           (await context.rest.post(Routes.channelMessages(channelId), {
@@ -136,21 +161,21 @@ export const reactionroleCommand: Command = {
       })
       return ephemeralEmbed({
         color: SUCCESS_COLOR,
-        description: `✅ Pulsante creato in <#${channelId}>.`,
+        description: t(($) => $.commands.reactionrole.created, { channelId }),
       })
     }
     if (subcommand.name === "delete") {
-      const rawMessage = getSubOption(subcommand, "messaggio", ApplicationCommandOptionType.String)
+      const rawMessage = getSubOption(subcommand, "message", ApplicationCommandOptionType.String)
       const messageId = rawMessage ? messageIdFromInput(rawMessage) : null
       if (!messageId) {
-        return ephemeralError("Specifica un ID o un link del messaggio valido.")
+        return ephemeralError(t(($) => $.commands.reactionrole.invalidMessage))
       }
       await deleteRoleButtonsForMessage(env.DB, messageId)
       return ephemeralEmbed({
         color: SUCCESS_COLOR,
-        description: `🗑️ Associazioni rimosse per il messaggio **${messageId}**.`,
+        description: t(($) => $.commands.reactionrole.removed, { messageId }),
       })
     }
-    return ephemeralError("Azione non valida.")
+    return ephemeralError(t(($) => $.commands.reactionrole.invalidAction))
   },
 }

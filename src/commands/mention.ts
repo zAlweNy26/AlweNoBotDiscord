@@ -7,22 +7,20 @@ export const mentionCommand: Command = {
   category: "Info",
   data: new SlashCommandBuilder()
     .setName("mention")
-    .setDescription("Configura le risposte del bot quando viene taggato")
+    .setDescription("Configure the bot's replies when it is tagged")
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
-    .addSubcommand((subcommand) => subcommand.setName("enable").setDescription("Attiva le risposte ai tag"))
-    .addSubcommand((subcommand) => subcommand.setName("disable").setDescription("Disattiva le risposte ai tag"))
-    .addSubcommand((subcommand) =>
-      subcommand.setName("mostra").setDescription("Mostra lo stato delle risposte ai tag"),
-    ),
+    .addSubcommand((subcommand) => subcommand.setName("enable").setDescription("Enable replies to tags"))
+    .addSubcommand((subcommand) => subcommand.setName("disable").setDescription("Disable replies to tags"))
+    .addSubcommand((subcommand) => subcommand.setName("show").setDescription("Show the tag reply status")),
 
-  async execute({ env, interaction }) {
+  async execute({ env, interaction, t }) {
     const guildId = interaction.guild_id
     if (!guildId) {
-      return ephemeralError("Questo comando può essere usato solo in un server.")
+      return ephemeralError(t(($) => $.common.guildOnly))
     }
     const subcommand = interaction.data.options?.[0]
     if (subcommand?.type !== ApplicationCommandOptionType.Subcommand) {
-      return ephemeralError("Sottocomando non valido.")
+      return ephemeralError(t(($) => $.commands.mention.invalidSubcommand))
     }
 
     switch (subcommand.name) {
@@ -32,25 +30,25 @@ export const mentionCommand: Command = {
         await updateGuildSettings(env.DB, guildId, { mentionEnabled: enabled })
         return ephemeralEmbed({
           color: SUCCESS_COLOR,
-          description: enabled
-            ? "✅ Ora rispondo a chi mi tagga. Buona fortuna."
-            : "🛑 Non rispondo più a chi mi tagga.",
+          description: enabled ? t(($) => $.commands.mention.enabled) : t(($) => $.commands.mention.disabled),
         })
       }
-      case "mostra":
+      case "show":
         return ephemeralEmbed({
           color: SUCCESS_COLOR,
-          title: "⚙️ Configurazione risposte ai tag",
+          title: t(($) => $.commands.mention.title),
           fields: [
             {
-              name: "Stato",
-              value: (await getGuildSettings(env.DB, guildId))?.mentionEnabled ? "Attivo ✅" : "Disattivato 🛑",
+              name: t(($) => $.commands.mention.status),
+              value: (await getGuildSettings(env.DB, guildId))?.mentionEnabled
+                ? t(($) => $.commands.mention.statusOn)
+                : t(($) => $.commands.mention.statusOff),
               inline: true,
             },
           ],
         })
       default:
-        return ephemeralError("Sottocomando non valido.")
+        return ephemeralError(t(($) => $.commands.mention.invalidSubcommand))
     }
   },
 }

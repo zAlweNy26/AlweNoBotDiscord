@@ -22,6 +22,13 @@
       "when": 1789394985348,
       "tag": "0002_cheerful_makkari",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1789761438636,
+      "tag": "0003_brainy_leo",
+      "breakpoints": true
     }
   ]
 }

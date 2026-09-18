@@ -16,21 +16,22 @@ interface CoinGeckoMarket {
   low_24h: number
 }
 
-function formatEuro(value: number | null) {
-  if (value === null) return "n/d"
-  return new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR" }).format(value)
+function formatEuro(value: number | null, locale: string) {
+  if (value === null) return "N/A"
+  return new Intl.NumberFormat(locale, { style: "currency", currency: "EUR" }).format(value)
 }
 
 export const cryptoCommand: Command = {
   data: new SlashCommandBuilder()
     .setName("crypto")
-    .setDescription("Mostra il prezzo di una criptomoneta")
+    .setDescription("Show the price of a cryptocurrency")
     .addStringOption((option) =>
-      option.setName("id").setDescription("ID della criptomoneta (es. bitcoin)").setRequired(true),
+      option.setName("id").setDescription("Cryptocurrency ID (e.g. bitcoin)").setRequired(true),
     ),
   category: "Misc",
   execute: (context) =>
     runDeferred(context, async () => {
+      const { t, locale } = context
       const id = (getStringOption(context.interaction, "id") ?? "").toLowerCase()
 
       let coins: CoinGeckoMarket[]
@@ -43,7 +44,7 @@ export const cryptoCommand: Command = {
           embeds: [
             {
               color: ERROR_COLOR,
-              description: "Servizio momentaneamente non disponibile, riprova più tardi.",
+              description: t(($) => $.commands.crypto.serviceUnavailable),
             },
           ],
         }
@@ -52,7 +53,7 @@ export const cryptoCommand: Command = {
       const coin = Array.isArray(coins) ? coins[0] : undefined
       if (!coin) {
         return {
-          embeds: [{ color: ERROR_COLOR, description: `La criptomoneta **${id}** non esiste.` }],
+          embeds: [{ color: ERROR_COLOR, description: t(($) => $.commands.crypto.notFound, { id }) }],
         }
       }
 
@@ -63,14 +64,14 @@ export const cryptoCommand: Command = {
             author: { name: `${coin.name} (${coin.symbol.toUpperCase()})` },
             thumbnail: { url: coin.image },
             fields: [
-              { name: "Prezzo", value: formatEuro(coin.current_price), inline: true },
+              { name: t(($) => $.commands.crypto.price), value: formatEuro(coin.current_price, locale), inline: true },
               {
-                name: "Variazione 24h",
-                value: formatEuro(coin.price_change_percentage_24h),
+                name: t(($) => $.commands.crypto.change24h),
+                value: formatEuro(coin.price_change_percentage_24h, locale),
                 inline: true,
               },
-              { name: "Massimo 24h", value: formatEuro(coin.high_24h), inline: true },
-              { name: "Minimo 24h", value: formatEuro(coin.low_24h), inline: true },
+              { name: t(($) => $.commands.crypto.high24h), value: formatEuro(coin.high_24h, locale), inline: true },
+              { name: t(($) => $.commands.crypto.low24h), value: formatEuro(coin.low_24h, locale), inline: true },
             ],
           },
         ],

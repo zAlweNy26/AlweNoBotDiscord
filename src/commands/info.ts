@@ -9,35 +9,35 @@ export const infoCommand: Command = {
   category: "Info",
   data: new SlashCommandBuilder()
     .setName("info")
-    .setDescription("Mostra informazioni su un utente")
-    .addUserOption((option) => option.setName("utente").setDescription("Utente di cui mostrare le informazioni")),
-  execute({ interaction }) {
-    const target = getUserOption(interaction, "utente")
+    .setDescription("Show information about a user")
+    .addUserOption((option) => option.setName("user").setDescription("User to show information about")),
+  execute({ interaction, t, locale }) {
+    const target = getUserOption(interaction, "user")
     const user = target?.user ?? interaction.user
     if (!user) {
-      return ephemeralError("Utente non trovato.")
+      return ephemeralError(t(($) => $.commands.info.userNotFound))
     }
     const member = target?.member ?? interaction.member
     const fields: APIEmbedField[] = [
-      { name: "Nome", value: user.global_name ?? user.username, inline: true },
-      { name: "Username", value: `@${user.username}`, inline: true },
-      { name: "ID", value: user.id, inline: true },
-      { name: "Nickname", value: member?.nick ?? "Nessuno", inline: true },
+      { name: t(($) => $.commands.info.name), value: user.global_name ?? user.username, inline: true },
+      { name: t(($) => $.commands.info.username), value: `@${user.username}`, inline: true },
+      { name: t(($) => $.commands.info.id), value: user.id, inline: true },
+      { name: t(($) => $.commands.info.nickname), value: member?.nick ?? t(($) => $.commands.info.none), inline: true },
       {
-        name: "Account creato il",
-        value: formatDate(snowflakeToDate(user.id), false),
+        name: t(($) => $.commands.info.accountCreated),
+        value: formatDate(snowflakeToDate(user.id), false, locale),
         inline: true,
       },
     ]
     if (member?.joined_at) {
       fields.push({
-        name: "Entrato nel server",
-        value: formatDate(new Date(member.joined_at), false),
+        name: t(($) => $.commands.info.joined),
+        value: formatDate(new Date(member.joined_at), false, locale),
         inline: true,
       })
     }
     if (member?.roles) {
-      fields.push({ name: "Ruoli", value: String(member.roles.length), inline: true })
+      fields.push({ name: t(($) => $.commands.info.roles), value: String(member.roles.length), inline: true })
     }
     const avatar = userAvatarUrl(user)
     return embedResponse({

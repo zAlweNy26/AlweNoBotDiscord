@@ -64,11 +64,11 @@ export const colorCommand: Command = {
   category: "Misc",
   data: new SlashCommandBuilder()
     .setName("color")
-    .setDescription("Converte un colore tra i vari formati")
+    .setDescription("Convert a color between formats")
     .addStringOption((option) =>
       option
-        .setName("formato")
-        .setDescription("Formato del valore inserito")
+        .setName("format")
+        .setDescription("Format of the input value")
         .setRequired(true)
         .addChoices(
           { name: "HEX", value: "hex" },
@@ -80,13 +80,13 @@ export const colorCommand: Command = {
         ),
     )
     .addStringOption((option) =>
-      option.setName("valore").setDescription("Valore da convertire (es. ff0000, 255,0,0, 0,100,50)").setRequired(true),
+      option.setName("value").setDescription("Value to convert (e.g. ff0000, 255,0,0, 0,100,50)").setRequired(true),
     ),
-  execute({ interaction }) {
-    const format = getStringOption(interaction, "formato") as Format | undefined
-    const raw = getStringOption(interaction, "valore")
+  execute({ interaction, t }) {
+    const format = getStringOption(interaction, "format") as Format | undefined
+    const raw = getStringOption(interaction, "value")
     if (!format || raw === undefined) {
-      return ephemeralError("Specifica il formato e il valore da convertire.")
+      return ephemeralError(t(($) => $.commands.color.missingInput))
     }
 
     let rgb: Rgb | null = null
@@ -96,9 +96,7 @@ export const colorCommand: Command = {
       rgb = null
     }
     if (!rgb) {
-      return ephemeralError(
-        "Valore non valido. Esempi: hex `ff0000`, rgb `255, 0, 0`, hsl `0, 100, 50`, hsv `0, 100, 100`, xyz `41.24, 21.26, 1.93`, hcg `0, 100, 100`.",
-      )
+      return ephemeralError(t(($) => $.commands.color.invalidValue))
     }
 
     const hex = convert.rgb.hex(rgb) as string
@@ -108,7 +106,7 @@ export const colorCommand: Command = {
 
     return embedResponse({
       color: Number.parseInt(hex, 16),
-      title: "🎨 Colore",
+      title: t(($) => $.commands.color.title),
       fields: [
         { name: "HEX", value: `#${hex}`, inline: true },
         { name: "RGB", value: `${rgb.join(", ")}`, inline: true },

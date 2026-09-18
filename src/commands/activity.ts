@@ -1,5 +1,8 @@
-import { type APIMessage, type REST, Routes, SlashCommandBuilder } from "discord.js"
+import { type APIMessage, ChannelType, PermissionFlagsBits, type REST, Routes, SlashCommandBuilder } from "discord.js"
+import type { TFunction } from "i18next"
 import { type ActivityMessage, rankActivity } from "../lib/activity"
+import { discordErrorDetail, permissionErrorMessage } from "../lib/discord-errors"
+import { createTranslator } from "../lib/i18n"
 import { deferredResponse, ERROR_COLOR, ephemeralError, SUCCESS_COLOR } from "../respond"
 import { isHumanMessage } from "../summary"
 import { getChannelOption } from "./options"
@@ -15,6 +18,7 @@ export interface ActivityReportMessage {
   kind: "activity"
   channelId: string
   token: string
+  locale: string
 }
 
 export interface ActivityReportDeps {
@@ -51,17 +55,17 @@ async function fetchHumansSince(rest: REST, channelId: string, since: number) {
   }
 }
 
-export async function runActivityReport(rest: REST, channelId: string) {
+export async function runActivityReport(rest: REST, channelId: string, t: TFunction) {
   let humans: ActivityMessage[]
   try {
     humans = await fetchHumansSince(rest, channelId, Date.now() - WINDOW_MS)
   } catch (error) {
-    console.error(`Failed to read messages for channel ${channelId}`, error)
+    console.error(`Failed to read messages for channel ${channelId}${discordErrorDetail(error)}`, error)
     return {
       embeds: [
         {
           color: ERROR_COLOR,
-          description: `Non riesco a leggere i messaggi in <#${channelId}>. Controlla che io abbia accesso al canale.`,
+          description: t(($) => $.commands.activity.readError, { channelId }),
         },
       ],
     }
@@ -73,7 +77,7 @@ export async function runActivityReport(rest: REST, channelId: string) {
       embeds: [
         {
           color: ERROR_COLOR,
-          description: `Nessun messaggio negli ultimi ${WINDOW_DAYS} giorni in <#${channelId}>.`,
+          description: t(($) => $.commands.activity.noMessages, { channelId, days: WINDOW_DAYS }),
         },
       ],
     }
@@ -83,27 +87,34 @@ export async function runActivityReport(rest: REST, channelId: string) {
     embeds: [
       {
         color: SUCCESS_COLOR,
-        title: "📊 Utenti più attivi",
+        title: t(($) => $.commands.activity.title),
         description: report.top
           .map((entry, index) => {
             const rank = MEDALS[index] ?? `**${index + 1}.**`
             const average = Math.round(entry.characters / entry.messages)
-            return `${rank} <@${entry.authorId}> — **${entry.messages}** messaggi · ${entry.share.toFixed(1)}% · ${average} caratteri/msg`
+            return t(($) => $.commands.activity.entry, {
+              rank,
+              authorId: entry.authorId,
+              messages: entry.messages,
+              share: entry.share.toFixed(1),
+              average,
+            })
           })
           .join("\n"),
         fields: [
-          { name: "Canale", value: `<#${channelId}>`, inline: true },
-          { name: "Messaggi analizzati", value: String(report.total), inline: true },
-          { name: "Partecipanti", value: String(report.participants), inline: true },
+          { name: t(($) => $.commands.activity.channel), value: `<#${channelId}>`, inline: true },
+          { name: t(($) => $.commands.activity.analyzed), value: String(report.total), inline: true },
+          { name: t(($) => $.commands.activity.participants), value: String(report.participants), inline: true },
         ],
-        footer: { text: `Ultimi ${WINDOW_DAYS} giorni · solo testo, bot esclusi` },
+        footer: { text: t(($) => $.commands.activity.footer, { days: WINDOW_DAYS }) },
       },
     ],
   }
 }
 
 export async function deliverActivityReport(deps: ActivityReportDeps, message: ActivityReportMessage) {
-  const body = await runActivityReport(deps.rest, message.channelId)
+  const t = createTranslator(message.locale)
+  const body = await runActivityReport(deps.rest, message.channelId, t)
   await deps.rest.patch(Routes.webhookMessage(deps.applicationId, message.token, "@original"), {
     body,
   })
@@ -113,24 +124,35 @@ export const activityCommand: Command = {
   category: "Info",
   data: new SlashCommandBuilder()
     .setName("activity")
-    .setDescription("Mostra gli utenti più attivi di un canale nell'ultima settimana")
+    .setDescription("Show the most active users in a channel over the last week")
     .addChannelOption((option) =>
-      option.setName("canale").setDescription("Canale da analizzare (predefinito: quello corrente)"),
+      option
+        .setName("channel")
+        .setDescription("Channel to analyze (defaults to the current one)")
+        .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement),
     ),
-  async execute({ env, interaction }) {
+  async execute({ env, interaction, t, locale }) {
     if (!interaction.guild_id) {
-      return ephemeralError("Questo comando può essere usato solo in un server.")
+      return ephemeralError(t(($) => $.common.guildOnly))
     }
-    const channelId = getChannelOption(interaction, "canale") ?? interaction.channel_id
+    const requested = getChannelOption(interaction, "channel")
+    if (!requested) {
+      const permissionError = permissionErrorMessage(t, locale, interaction, PermissionFlagsBits.ReadMessageHistory)
+      if (permissionError) {
+        return ephemeralError(permissionError)
+      }
+    }
+    const channelId = requested ?? interaction.channel_id
     try {
       await env.alwenobot_summary.send({
         kind: "activity",
         channelId,
         token: interaction.token,
+        locale,
       } satisfies ActivityReportMessage)
     } catch (error) {
       console.error(`Failed to queue the activity report for channel ${channelId}`, error)
-      return ephemeralError("Non riesco ad avviare l'analisi. Riprova più tardi.")
+      return ephemeralError(t(($) => $.commands.activity.queueError))
     }
     return deferredResponse()
   },

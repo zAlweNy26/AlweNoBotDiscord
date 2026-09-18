@@ -1,17 +1,12 @@
 import {
   type APIApplicationCommandInteractionDataSubcommandOption,
+  type ApplicationCommandOptionAllowedChannelTypes,
   ApplicationCommandOptionType,
+  ChannelType,
   PermissionFlagsBits,
   SlashCommandBuilder,
 } from "discord.js"
-import {
-  DEFAULT_COUNTER_FORMAT,
-  DEFAULT_FAREWELL_MESSAGE,
-  DEFAULT_WELCOME_MESSAGE,
-  ensureGuildSettings,
-  type GuildSettingsPatch,
-  updateGuildSettings,
-} from "../db"
+import { ensureGuildSettings, type GuildSettingsPatch, updateGuildSettings } from "../db"
 import { embedResponse, ephemeralEmbed, ephemeralError, SUCCESS_COLOR } from "../respond"
 import type { Command } from "./types"
 
@@ -35,46 +30,51 @@ function buildConfigCommand(spec: {
   name: "welcome" | "farewell" | "counter"
   description: string
   label: string
+  title: string
   enabledField: "welcomeEnabled" | "farewellEnabled" | "counterEnabled"
   channelField: "welcomeChannelId" | "farewellChannelId" | "counterChannelId"
   textField: "welcomeMessage" | "farewellMessage" | "counterFormat"
-  textOptionName: "messaggio" | "formato"
+  textOptionName: "message" | "format"
   textDescription: string
-  defaultText: string
+  channelTypes: ApplicationCommandOptionAllowedChannelTypes[]
 }) {
   const data = new SlashCommandBuilder()
     .setName(spec.name)
     .setDescription(spec.description)
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
-    .addSubcommand((subcommand) => subcommand.setName("enable").setDescription(`Attiva ${spec.label}`))
-    .addSubcommand((subcommand) => subcommand.setName("disable").setDescription(`Disattiva ${spec.label}`))
+    .addSubcommand((subcommand) => subcommand.setName("enable").setDescription(`Enable ${spec.label}`))
+    .addSubcommand((subcommand) => subcommand.setName("disable").setDescription(`Disable ${spec.label}`))
     .addSubcommand((subcommand) =>
       subcommand
-        .setName("canale")
-        .setDescription(`Imposta il canale per ${spec.label}`)
-        .addChannelOption((option) => option.setName("canale").setDescription("Canale da usare").setRequired(true)),
+        .setName("channel")
+        .setDescription(`Set the channel for ${spec.label}`)
+        .addChannelOption((option) =>
+          option
+            .setName("channel")
+            .setDescription("Channel to use")
+            .addChannelTypes(...spec.channelTypes)
+            .setRequired(true),
+        ),
     )
     .addSubcommand((subcommand) =>
       subcommand
         .setName(spec.textOptionName)
         .setDescription(spec.textDescription)
-        .addStringOption((option) => option.setName("testo").setDescription("Nuovo testo").setRequired(true)),
+        .addStringOption((option) => option.setName("text").setDescription("New text").setRequired(true)),
     )
-    .addSubcommand((subcommand) =>
-      subcommand.setName("mostra").setDescription(`Mostra la configurazione di ${spec.label}`),
-    )
+    .addSubcommand((subcommand) => subcommand.setName("show").setDescription(`Show the ${spec.label} configuration`))
 
   return {
     category: "Info",
     data,
-    async execute({ env, interaction }) {
+    async execute({ env, interaction, t }) {
       const guildId = interaction.guild_id
       if (!guildId) {
-        return ephemeralError("Questo comando può essere usato solo in un server.")
+        return ephemeralError(t(($) => $.common.guildOnly))
       }
       const subcommand = getSubcommand(interaction)
       if (!subcommand) {
-        return ephemeralError("Sottocomando non valido.")
+        return ephemeralError(t(($) => $.commands.config.invalidSubcommand))
       }
 
       const db = env.DB
@@ -88,53 +88,60 @@ function buildConfigCommand(spec: {
         case "disable":
           patch[spec.enabledField] = false
           break
-        case "canale": {
-          const channelId = getSubOption(subcommand, "canale", ApplicationCommandOptionType.Channel)
+        case "channel": {
+          const channelId = getSubOption(subcommand, "channel", ApplicationCommandOptionType.Channel)
           if (typeof channelId !== "string") {
-            return ephemeralError("Canale non valido.")
+            return ephemeralError(t(($) => $.commands.config.invalidChannel))
           }
           patch[spec.channelField] = channelId
           break
         }
         case spec.textOptionName: {
-          const text = getSubOption(subcommand, "testo", ApplicationCommandOptionType.String)
+          const text = getSubOption(subcommand, "text", ApplicationCommandOptionType.String)
           if (typeof text !== "string" || text.trim().length === 0) {
-            return ephemeralError("Testo non valido.")
+            return ephemeralError(t(($) => $.commands.config.invalidText))
           }
           patch[spec.textField] = text
           break
         }
-        case "mostra": {
+        case "show": {
           const channelId = settings[spec.channelField]
           return embedResponse({
             color: SUCCESS_COLOR,
-            title: `⚙️ Configurazione ${spec.label}`,
+            title: t(($) => $.commands.config.title, { title: t(($) => $.commands.config.titles[spec.name]) }),
             fields: [
               {
-                name: "Stato",
-                value: settings[spec.enabledField] ? "Attivo ✅" : "Disattivato 🛑",
+                name: t(($) => $.commands.config.status),
+                value: settings[spec.enabledField]
+                  ? t(($) => $.commands.config.enabled)
+                  : t(($) => $.commands.config.disabled),
                 inline: true,
               },
               {
-                name: "Canale",
-                value: channelId ? `<#${channelId}>` : "Non impostato",
+                name: t(($) => $.commands.config.channel),
+                value: channelId ? `<#${channelId}>` : t(($) => $.commands.config.notSet),
                 inline: true,
               },
               {
-                name: spec.textOptionName === "formato" ? "Formato" : "Messaggio",
-                value: settings[spec.textField] ?? spec.defaultText,
+                name:
+                  spec.textOptionName === "format"
+                    ? t(($) => $.commands.config.format)
+                    : t(($) => $.commands.config.message),
+                value:
+                  settings[spec.textField] ??
+                  t(($) => $.gateway.defaults[spec.name], { utente: "{{utente}}", membri: "{{membri}}" }),
               },
             ],
           })
         }
         default:
-          return ephemeralError("Sottocomando non valido.")
+          return ephemeralError(t(($) => $.commands.config.invalidSubcommand))
       }
 
       await updateGuildSettings(db, guildId, patch)
       return ephemeralEmbed({
         color: SUCCESS_COLOR,
-        description: `✅ Configurazione di ${spec.label} aggiornata.`,
+        description: t(($) => $.commands.config.updated, { label: t(($) => $.commands.config.labels[spec.name]) }),
       })
     },
   } satisfies Command
@@ -142,36 +149,39 @@ function buildConfigCommand(spec: {
 
 export const welcomeCommand = buildConfigCommand({
   name: "welcome",
-  description: "Configura il messaggio di benvenuto",
-  label: "il benvenuto",
+  description: "Configure the welcome message",
+  label: "the welcome message",
+  title: "Welcome message",
   enabledField: "welcomeEnabled",
   channelField: "welcomeChannelId",
   textField: "welcomeMessage",
-  textOptionName: "messaggio",
-  textDescription: "Imposta il messaggio di benvenuto ({{utente}}, {{membri}})",
-  defaultText: DEFAULT_WELCOME_MESSAGE,
+  textOptionName: "message",
+  textDescription: "Set the welcome message ({{utente}}, {{membri}})",
+  channelTypes: [ChannelType.GuildText, ChannelType.GuildAnnouncement],
 })
 
 export const farewellCommand = buildConfigCommand({
   name: "farewell",
-  description: "Configura il messaggio di addio",
-  label: "l'addio",
+  description: "Configure the farewell message",
+  label: "the farewell message",
+  title: "Farewell message",
   enabledField: "farewellEnabled",
   channelField: "farewellChannelId",
   textField: "farewellMessage",
-  textOptionName: "messaggio",
-  textDescription: "Imposta il messaggio di addio ({{utente}}, {{membri}})",
-  defaultText: DEFAULT_FAREWELL_MESSAGE,
+  textOptionName: "message",
+  textDescription: "Set the farewell message ({{utente}}, {{membri}})",
+  channelTypes: [ChannelType.GuildText, ChannelType.GuildAnnouncement],
 })
 
 export const counterCommand = buildConfigCommand({
   name: "counter",
-  description: "Configura il contatore membri",
-  label: "il contatore membri",
+  description: "Configure the member counter",
+  label: "the member counter",
+  title: "Member counter",
   enabledField: "counterEnabled",
   channelField: "counterChannelId",
   textField: "counterFormat",
-  textOptionName: "formato",
-  textDescription: "Imposta il formato del contatore ({{membri}})",
-  defaultText: DEFAULT_COUNTER_FORMAT,
+  textOptionName: "format",
+  textDescription: "Set the counter format ({{membri}})",
+  channelTypes: [ChannelType.GuildVoice],
 })

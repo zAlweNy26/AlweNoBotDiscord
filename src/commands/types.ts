@@ -6,6 +6,7 @@ import type {
   SlashCommandOptionsOnlyBuilder,
   SlashCommandSubcommandsOnlyBuilder,
 } from "discord.js"
+import type { TFunction } from "i18next"
 
 export type CommandCategory = "Mod" | "Info" | "Misc"
 
@@ -14,6 +15,8 @@ export interface CommandContext {
   rest: REST
   interaction: APIChatInputApplicationCommandInteraction
   waitUntil: (promise: Promise<unknown>) => void
+  t: TFunction
+  locale: string
 }
 
 export interface Command {

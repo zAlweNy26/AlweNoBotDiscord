@@ -24,7 +24,7 @@ interface OsrmResponse {
 }
 
 // The router.project-osrm.org demo host ignores the profile in the path and always routes by car,
-// so only the FOSSGIS instance and its routed-* prefixes can honour "piedi".
+// so only the FOSSGIS instance and its routed-* prefixes can honour "walk".
 const OSRM_BASE = "https://routing.openstreetmap.de"
 const USER_AGENT = "AlweNoBot (+https://discord.danyalwe.me)"
 
@@ -32,9 +32,9 @@ function error(description: string) {
   return { embeds: [{ color: ERROR_COLOR, description }] }
 }
 
-function geocode(place: string) {
+function geocode(place: string, locale: string) {
   return fetchJson<GeocodingResponse>(
-    `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(place)}&count=1&language=it&format=json`,
+    `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(place)}&count=1&language=${locale}&format=json`,
   ).then((response) => response.results?.[0])
 }
 
@@ -46,36 +46,35 @@ export const distanceCommand: Command = {
   category: "Misc",
   data: new SlashCommandBuilder()
     .setName("distance")
-    .setDescription("Calcola distanza e tempo di percorrenza tra due località")
-    .addStringOption((option) => option.setName("partenza").setDescription("Località di partenza").setRequired(true))
-    .addStringOption((option) =>
-      option.setName("destinazione").setDescription("Località di destinazione").setRequired(true),
-    )
+    .setDescription("Calculate distance and travel time between two places")
+    .addStringOption((option) => option.setName("from").setDescription("Starting place").setRequired(true))
+    .addStringOption((option) => option.setName("to").setDescription("Destination place").setRequired(true))
     .addStringOption((option) =>
       option
-        .setName("mezzo")
-        .setDescription("Mezzo di trasporto (predefinito: auto)")
-        .addChoices({ name: "Auto", value: "auto" }, { name: "A piedi", value: "piedi" }),
+        .setName("mode")
+        .setDescription("Travel mode (default: car)")
+        .addChoices({ name: "Car", value: "car" }, { name: "Walking", value: "walk" }),
     ),
   execute(context) {
     return runDeferred(context, async () => {
-      const from = getStringOption(context.interaction, "partenza") ?? ""
-      const to = getStringOption(context.interaction, "destinazione") ?? ""
-      const walking = getStringOption(context.interaction, "mezzo") === "piedi"
+      const { t, locale } = context
+      const from = getStringOption(context.interaction, "from") ?? ""
+      const to = getStringOption(context.interaction, "to") ?? ""
+      const walking = getStringOption(context.interaction, "mode") === "walk"
 
       let origin: GeocodingResult | undefined
       let destination: GeocodingResult | undefined
       try {
-        const located = await Promise.all([geocode(from), geocode(to)])
+        const located = await Promise.all([geocode(from, locale), geocode(to, locale)])
         origin = located[0]
         destination = located[1]
       } catch (geocodingError) {
         console.error("Geocoding request failed", geocodingError)
-        return error("Servizio momentaneamente non disponibile, riprova più tardi.")
+        return error(t(($) => $.commands.distance.serviceUnavailable))
       }
 
-      if (!origin) return error(`Nessun risultato per **${from}**.`)
-      if (!destination) return error(`Nessun risultato per **${to}**.`)
+      if (!origin) return error(t(($) => $.commands.distance.noResults, { place: from }))
+      if (!destination) return error(t(($) => $.commands.distance.noResults, { place: to }))
 
       let data: OsrmResponse
       try {
@@ -87,20 +86,28 @@ export const distanceCommand: Command = {
         )
       } catch (routingError) {
         console.error("OSRM request failed", routingError)
-        return error("Servizio momentaneamente non disponibile, riprova più tardi.")
+        return error(t(($) => $.commands.distance.serviceUnavailable))
       }
 
       const route = data.code === "Ok" ? data.routes?.[0] : undefined
       if (route?.distance === undefined || route.duration === undefined) {
-        return error("Nessun percorso trovato per le località indicate.")
+        return error(t(($) => $.commands.distance.noRoute))
       }
 
       const fields: APIEmbedField[] = [
-        { name: "Distanza", value: formatRouteDistance(route.distance), inline: true },
-        { name: "Durata stimata", value: formatRouteDuration(route.duration), inline: true },
-        { name: "Mezzo usato", value: walking ? "A piedi" : "Auto", inline: true },
-        { name: "Partenza", value: describePlace(origin) },
-        { name: "Destinazione", value: describePlace(destination) },
+        { name: t(($) => $.commands.distance.distance), value: formatRouteDistance(route.distance), inline: true },
+        {
+          name: t(($) => $.commands.distance.duration),
+          value: formatRouteDuration(route.duration, t),
+          inline: true,
+        },
+        {
+          name: t(($) => $.commands.distance.mode),
+          value: walking ? t(($) => $.commands.distance.modeWalking) : t(($) => $.commands.distance.modeCar),
+          inline: true,
+        },
+        { name: t(($) => $.commands.distance.from), value: describePlace(origin) },
+        { name: t(($) => $.commands.distance.to), value: describePlace(destination) },
       ]
 
       return {
@@ -109,7 +116,7 @@ export const distanceCommand: Command = {
             color: SUCCESS_COLOR,
             title: `🗺️ ${from} → ${to}`,
             fields,
-            footer: { text: "Percorso OSRM · dati © OpenStreetMap contributors" },
+            footer: { text: t(($) => $.commands.distance.footer) },
           },
         ],
       }

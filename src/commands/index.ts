@@ -6,6 +6,7 @@ import { cryptoCommand } from "./crypto"
 import { distanceCommand } from "./distance"
 import { helpCommand } from "./help"
 import { infoCommand } from "./info"
+import { languageCommand } from "./language"
 import { mentionCommand } from "./mention"
 import { pingCommand } from "./ping"
 import { reactionroleCommand } from "./reactionrole"
@@ -38,5 +39,6 @@ registerCommand(steamCommand)
 registerCommand(steamgameCommand)
 registerCommand(reactionroleCommand)
 registerCommand(summaryCommand)
+registerCommand(languageCommand)
 
 export { commandMap, commands }

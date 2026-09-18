@@ -1,6 +1,6 @@
 import { SlashCommandBuilder } from "discord.js"
 import { fetchJson } from "../lib/http"
-import { describeWeatherCode } from "../lib/weather"
+import { weatherCodeKey } from "../lib/weather"
 import { ERROR_COLOR, SUCCESS_COLOR } from "../respond"
 import { runDeferred } from "./deferred"
 import { getStringOption } from "./options"
@@ -33,21 +33,22 @@ interface ForecastResponse {
 export const weatherCommand: Command = {
   data: new SlashCommandBuilder()
     .setName("weather")
-    .setDescription("Mostra il meteo attuale per una località")
-    .addStringOption((option) => option.setName("luogo").setDescription("Città o località").setRequired(true)),
+    .setDescription("Show the current weather for a place")
+    .addStringOption((option) => option.setName("place").setDescription("City or place").setRequired(true)),
   category: "Misc",
   execute: (context) =>
     runDeferred(context, async () => {
-      const place = getStringOption(context.interaction, "luogo") ?? ""
+      const { t, locale } = context
+      const place = getStringOption(context.interaction, "place") ?? ""
 
       const location = (
         await fetchJson<GeocodingResponse>(
-          `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(place)}&count=1&language=it&format=json`,
+          `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(place)}&count=1&language=${locale}&format=json`,
         )
       ).results?.[0]
       if (!location) {
         return {
-          embeds: [{ color: ERROR_COLOR, description: `Nessun risultato per **${place}**.` }],
+          embeds: [{ color: ERROR_COLOR, description: t(($) => $.commands.weather.noResults, { place }) }],
         }
       }
 
@@ -61,21 +62,27 @@ export const weatherCommand: Command = {
           {
             color: SUCCESS_COLOR,
             author: {
-              name: `Info su ${[location.name, location.admin1, location.country]
-                .filter((part): part is string => Boolean(part))
-                .join(", ")}`,
+              name: t(($) => $.commands.weather.author, {
+                place: [location.name, location.admin1, location.country]
+                  .filter((part): part is string => Boolean(part))
+                  .join(", "),
+              }),
             },
             fields: [
               {
-                name: "Coordinate",
+                name: t(($) => $.commands.weather.coordinates),
                 value: `${location.latitude}, ${location.longitude}`,
                 inline: true,
               },
-              { name: "Fuso orario", value: forecast.timezone, inline: true },
-              { name: "Temperatura", value: `${current.temperature_2m} °C`, inline: true },
-              { name: "Tempo", value: describeWeatherCode(current.weather_code), inline: true },
-              { name: "Vento", value: `${current.wind_speed_10m} km/h`, inline: true },
-              { name: "Umidità", value: `${current.relative_humidity_2m}%`, inline: true },
+              { name: t(($) => $.commands.weather.timeZone), value: forecast.timezone, inline: true },
+              { name: t(($) => $.commands.weather.temperature), value: `${current.temperature_2m} °C`, inline: true },
+              {
+                name: t(($) => $.commands.weather.weather),
+                value: t(($) => $.weather[weatherCodeKey(current.weather_code)]),
+                inline: true,
+              },
+              { name: t(($) => $.commands.weather.wind), value: `${current.wind_speed_10m} km/h`, inline: true },
+              { name: t(($) => $.commands.weather.humidity), value: `${current.relative_humidity_2m}%`, inline: true },
             ],
           },
         ],

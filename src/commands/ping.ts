@@ -6,7 +6,7 @@ import type { Command } from "./types"
 
 export const pingCommand: Command = {
   category: "Info",
-  data: new SlashCommandBuilder().setName("ping").setDescription("Mostra la latenza del bot"),
+  data: new SlashCommandBuilder().setName("ping").setDescription("Show the bot latency"),
 
   async execute(context) {
     return runDeferred(context, async () => {
@@ -28,7 +28,7 @@ export const pingCommand: Command = {
           {
             color: SUCCESS_COLOR,
             title: "🏓 Pong!",
-            description: `Latenza: **${latency} ms**`,
+            description: context.t(($) => $.commands.ping.latency, { latency }),
           },
         ],
       }

@@ -1,4 +1,5 @@
 import { type APIEmbedField, SlashCommandBuilder } from "discord.js"
+import type { TFunction } from "i18next"
 import { fetchJson } from "../lib/http"
 import { ERROR_COLOR, SUCCESS_COLOR } from "../respond"
 import { runDeferred } from "./deferred"
@@ -49,20 +50,20 @@ interface SteamSpyResponse {
 
 const TYPE_COLORS: Record<string, number> = { game: 0x95e318, dlc: 0xa555b1, mod: 0xe1b21e }
 
-function formatPrice(data: NonNullable<AppDetailsEntry["data"]>) {
-  if (data.is_free) return "Gratis"
+function formatPrice(data: NonNullable<AppDetailsEntry["data"]>, t: TFunction, locale: string) {
+  if (data.is_free) return t(($) => $.commands.steamgame.free)
   const price = data.price_overview
-  if (!price) return "n/d"
-  const value = new Intl.NumberFormat("it-IT", {
+  if (!price) return t(($) => $.common.notAvailable)
+  const value = new Intl.NumberFormat(locale, {
     style: "currency",
     currency: price.currency || "EUR",
   }).format(price.final / 100)
   return price.discount_percent > 0 ? `${value} (-${price.discount_percent}%)` : value
 }
 
-function formatPlaytime(minutes: number | undefined) {
-  if (!minutes) return "n/d"
-  return `${Math.round(minutes / 60)} ore`
+function formatPlaytime(minutes: number | undefined, t: TFunction) {
+  if (!minutes) return t(($) => $.common.notAvailable)
+  return t(($) => $.commands.steamgame.hoursPlayed, { hours: Math.round(minutes / 60) })
 }
 
 function error(description: string) {
@@ -73,14 +74,15 @@ export const steamgameCommand: Command = {
   category: "Misc",
   data: new SlashCommandBuilder()
     .setName("steamgame")
-    .setDescription("Mostra informazioni su un gioco Steam")
-    .addStringOption((option) => option.setName("query").setDescription("Nome del gioco o appid").setRequired(true)),
+    .setDescription("Show information about a Steam game")
+    .addStringOption((option) => option.setName("query").setDescription("Game name or appid").setRequired(true)),
   async execute(context) {
+    const { t, locale } = context
     const query = getStringOption(context.interaction, "query")?.trim()
     if (!query) {
       return {
         type: 4,
-        data: { ...error("Specifica il nome di un gioco o un appid."), flags: 64 },
+        data: { ...error(t(($) => $.commands.steamgame.missingQuery)), flags: 64 },
       }
     }
 
@@ -91,16 +93,16 @@ export const steamgameCommand: Command = {
       } else {
         appid = (
           await fetchJson<StoreSearchResponse>(
-            `https://store.steampowered.com/api/storesearch/?term=${encodeURIComponent(query)}&l=italian&cc=it`,
+            `https://store.steampowered.com/api/storesearch/?term=${encodeURIComponent(query)}&l=english&cc=it`,
           )
         ).items?.[0]?.id
       }
       if (!appid) {
-        return error(`❌ Nessun gioco trovato per **${query}**.`)
+        return error(t(($) => $.commands.steamgame.noGame, { query }))
       }
 
       const [detailsResponse, players, spy] = await Promise.all([
-        fetchJson<AppDetailsResponse>(`https://store.steampowered.com/api/appdetails?appids=${appid}&cc=it&l=italian`),
+        fetchJson<AppDetailsResponse>(`https://store.steampowered.com/api/appdetails?appids=${appid}&cc=it&l=english`),
         fetchJson<CurrentPlayersResponse>(
           `https://api.steampowered.com/ISteamUserStats/GetNumberOfCurrentPlayers/v1/?appid=${appid}`,
         ).catch(() => null),
@@ -110,46 +112,59 @@ export const steamgameCommand: Command = {
       const entry = detailsResponse[String(appid)]
       const data = entry?.success ? entry.data : undefined
       if (!data) {
-        return error(`❌ Nessun dato disponibile per l'appid **${appid}**.`)
+        return error(t(($) => $.commands.steamgame.noData, { appid }))
       }
 
       const fields: APIEmbedField[] = []
       fields.push({
-        name: "Tipo",
-        value: ({ game: "Gioco", dlc: "DLC", mod: "Mod" } as Record<string, string>)[data.type] ?? data.type,
+        name: t(($) => $.commands.steamgame.type),
+        value:
+          (
+            {
+              game: t(($) => $.commands.steamgame.typeGame),
+              dlc: t(($) => $.commands.steamgame.typeDlc),
+              mod: t(($) => $.commands.steamgame.typeMod),
+            } as Record<string, string>
+          )[data.type] ?? data.type,
         inline: true,
       })
       fields.push({
-        name: "Età minima",
-        value: data.required_age > 0 ? `${data.required_age}+` : "Per tutti",
-        inline: true,
-      })
-      fields.push({ name: "Prezzo", value: formatPrice(data), inline: true })
-      fields.push({
-        name: "Achievements",
-        value: data.achievements?.total ? String(data.achievements.total) : "Nessuno",
+        name: t(($) => $.commands.steamgame.minimumAge),
+        value: data.required_age > 0 ? `${data.required_age}+` : t(($) => $.commands.steamgame.everyone),
         inline: true,
       })
       fields.push({
-        name: "Giocatori attuali",
-        value: players?.response?.player_count ? players.response.player_count.toLocaleString("it-IT") : "n/d",
+        name: t(($) => $.commands.steamgame.price),
+        value: formatPrice(data, t, locale),
         inline: true,
       })
       fields.push({
-        name: "Media tempo di gioco",
-        value: formatPlaytime(spy?.average_forever),
+        name: t(($) => $.commands.steamgame.achievements),
+        value: data.achievements?.total ? String(data.achievements.total) : t(($) => $.common.none),
         inline: true,
       })
       fields.push({
-        name: "Sviluppatore/i",
-        value: data.developers?.join(", ") || "n/d",
+        name: t(($) => $.commands.steamgame.currentPlayers),
+        value: players?.response?.player_count
+          ? players.response.player_count.toLocaleString(locale)
+          : t(($) => $.common.notAvailable),
+        inline: true,
       })
       fields.push({
-        name: "Editore/i",
-        value: data.publishers?.join(", ") || "n/d",
+        name: t(($) => $.commands.steamgame.averagePlaytime),
+        value: formatPlaytime(spy?.average_forever, t),
+        inline: true,
       })
       fields.push({
-        name: "Piattaforme",
+        name: t(($) => $.commands.steamgame.developers),
+        value: data.developers?.join(", ") || t(($) => $.common.notAvailable),
+      })
+      fields.push({
+        name: t(($) => $.commands.steamgame.publishers),
+        value: data.publishers?.join(", ") || t(($) => $.common.notAvailable),
+      })
+      fields.push({
+        name: t(($) => $.commands.steamgame.platforms),
         value:
           [
             data.platforms.windows ? "Windows" : null,
@@ -157,9 +172,12 @@ export const steamgameCommand: Command = {
             data.platforms.linux ? "Linux" : null,
           ]
             .filter((platform): platform is string => platform !== null)
-            .join(", ") || "n/d",
+            .join(", ") || t(($) => $.common.notAvailable),
       })
-      fields.push({ name: "Data di uscita", value: data.release_date?.date ?? "n/d" })
+      fields.push({
+        name: t(($) => $.commands.steamgame.releaseDate),
+        value: data.release_date?.date ?? t(($) => $.common.notAvailable),
+      })
 
       return {
         embeds: [

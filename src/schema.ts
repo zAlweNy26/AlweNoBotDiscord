@@ -12,6 +12,7 @@ export const guildSettings = sqliteTable("guild_settings", {
   counterChannelId: text("counter_channel_id"),
   counterFormat: text("counter_format"),
   mentionEnabled: integer("mention_enabled", { mode: "boolean" }).notNull().default(false),
+  locale: text("locale"),
 })
 
 export const summaryChannels = sqliteTable(

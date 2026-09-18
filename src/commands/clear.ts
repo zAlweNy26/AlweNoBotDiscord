@@ -1,4 +1,5 @@
 import { type APIMessage, PermissionFlagsBits, Routes, SlashCommandBuilder } from "discord.js"
+import { permissionErrorMessage } from "../lib/discord-errors"
 import { ephemeralEmbed, ephemeralError, SUCCESS_COLOR } from "../respond"
 import { getIntegerOption } from "./options"
 import type { Command } from "./types"
@@ -9,23 +10,33 @@ export const clearCommand: Command = {
   category: "Mod",
   data: new SlashCommandBuilder()
     .setName("clear")
-    .setDescription("Elimina gli ultimi messaggi del canale")
+    .setDescription("Delete the most recent messages in the channel")
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages)
     .addIntegerOption((option) =>
       option
-        .setName("quantita")
-        .setDescription("Numero di messaggi da eliminare (1-100)")
+        .setName("amount")
+        .setDescription("Number of messages to delete (1-100)")
         .setRequired(true)
         .setMinValue(1)
         .setMaxValue(100),
     ),
-  async execute({ rest, interaction }) {
+  async execute({ rest, interaction, t, locale }) {
     if (!interaction.guild_id) {
-      return ephemeralError("Questo comando può essere usato solo in un server.")
+      return ephemeralError(t(($) => $.common.guildOnly))
     }
-    const amount = getIntegerOption(interaction, "quantita")
+    const permissionError = permissionErrorMessage(
+      t,
+      locale,
+      interaction,
+      PermissionFlagsBits.ManageMessages,
+      PermissionFlagsBits.ReadMessageHistory,
+    )
+    if (permissionError) {
+      return ephemeralError(permissionError)
+    }
+    const amount = getIntegerOption(interaction, "amount")
     if (amount === undefined) {
-      return ephemeralError("Specifica il numero di messaggi da eliminare.")
+      return ephemeralError(t(($) => $.commands.clear.amountRequired))
     }
     const ids = (
       (await rest.get(Routes.channelMessages(interaction.channel_id), {
@@ -35,7 +46,7 @@ export const clearCommand: Command = {
       .filter((message) => Date.now() - Date.parse(message.timestamp) < TWO_WEEKS_MS)
       .map((message) => message.id)
     if (ids.length === 0) {
-      return ephemeralError("Non ci sono messaggi recenti da eliminare.")
+      return ephemeralError(t(($) => $.commands.clear.noRecent))
     }
     const [onlyId] = ids
     if (ids.length === 1 && onlyId) {
@@ -47,7 +58,7 @@ export const clearCommand: Command = {
     }
     return ephemeralEmbed({
       color: SUCCESS_COLOR,
-      description: `🗑️ Eliminati **${ids.length}** messaggi.`,
+      description: t(($) => $.commands.clear.deleted, { count: ids.length }),
     })
   },
 }

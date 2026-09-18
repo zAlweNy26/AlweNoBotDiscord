@@ -6,10 +6,10 @@ import type { Command } from "./types"
 
 export const serverCommand: Command = {
   category: "Info",
-  data: new SlashCommandBuilder().setName("server").setDescription("Mostra informazioni sul server"),
-  async execute({ rest, interaction }) {
+  data: new SlashCommandBuilder().setName("server").setDescription("Show information about the server"),
+  async execute({ rest, interaction, t, locale }) {
     if (!interaction.guild_id) {
-      return ephemeralError("Questo comando può essere usato solo in un server.")
+      return ephemeralError(t(($) => $.common.guildOnly))
     }
     const guild = (await rest.get(Routes.guild(interaction.guild_id), {
       query: new URLSearchParams({ with_counts: "true" }),
@@ -18,28 +18,28 @@ export const serverCommand: Command = {
       approximate_presence_count?: number
     }
     const fields: APIEmbedField[] = [
-      { name: "Proprietario", value: `<@${guild.owner_id}>`, inline: true },
+      { name: t(($) => $.commands.server.owner), value: `<@${guild.owner_id}>`, inline: true },
       {
-        name: "Membri",
+        name: t(($) => $.commands.server.members),
         value: String(guild.approximate_member_count ?? 0),
         inline: true,
       },
     ]
     if (guild.approximate_presence_count !== undefined) {
       fields.push({
-        name: "Online",
+        name: t(($) => $.commands.server.online),
         value: String(guild.approximate_presence_count),
         inline: true,
       })
     }
-    fields.push({ name: "Ruoli", value: String(guild.roles.length), inline: true })
+    fields.push({ name: t(($) => $.commands.server.roles), value: String(guild.roles.length), inline: true })
     fields.push({
-      name: "Creato il",
-      value: formatDate(snowflakeToDate(guild.id), false),
+      name: t(($) => $.commands.server.created),
+      value: formatDate(snowflakeToDate(guild.id), false, locale),
       inline: true,
     })
     if (guild.afk_channel_id) {
-      fields.push({ name: "Canale AFK", value: `<#${guild.afk_channel_id}>`, inline: true })
+      fields.push({ name: t(($) => $.commands.server.afkChannel), value: `<#${guild.afk_channel_id}>`, inline: true })
     }
     const icon = guildIconUrl(guild)
     return embedResponse({

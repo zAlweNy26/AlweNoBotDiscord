@@ -14,11 +14,8 @@ export interface GuildSettings {
   counterChannelId: string | null
   counterFormat: string | null
   mentionEnabled: boolean
+  locale: string | null
 }
-
-export const DEFAULT_WELCOME_MESSAGE = "👋 Benvenuto {{utente}} nel server!"
-export const DEFAULT_FAREWELL_MESSAGE = "👋 Ciao {{utente}}, a presto!"
-export const DEFAULT_COUNTER_FORMAT = "👥 Membri : {{membri}}"
 
 export type GuildSettingsPatch = Partial<Omit<GuildSettings, "guildId">>
 

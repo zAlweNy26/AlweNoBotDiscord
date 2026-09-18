@@ -1,4 +1,5 @@
 import { type APIEmbedField, SlashCommandBuilder } from "discord.js"
+import type { TFunction } from "i18next"
 import { getCountryName } from "../lib/countries"
 import { formatIsoTimestamp } from "../lib/format"
 import { fetchJson } from "../lib/http"
@@ -35,57 +36,58 @@ function error(description: string) {
   return { embeds: [{ color: ERROR_COLOR, description }] }
 }
 
-function apiError(cause: unknown) {
+function apiError(cause: unknown, t: TFunction) {
   const message = cause instanceof Error ? cause.message : ""
   if (message.includes("400") || message.includes("403")) {
-    return error("Chiave API di YouTube non valida o quota esaurita.")
+    return error(t(($) => $.commands.ytinfo.apiKeyInvalid))
   }
-  return error("Servizio momentaneamente non disponibile, riprova più tardi.")
+  return error(t(($) => $.commands.ytinfo.serviceUnavailable))
 }
 
 function formatCount(value: string | undefined) {
-  return Number(value ?? 0).toLocaleString("it-IT")
+  return Number(value ?? 0).toLocaleString("en-US")
 }
 
 export const ytinfoCommand: Command = {
   category: "Misc",
   data: new SlashCommandBuilder()
     .setName("ytinfo")
-    .setDescription("Mostra informazioni su un canale YouTube")
+    .setDescription("Show information about a YouTube channel")
     .addStringOption((option) =>
       option
-        .setName("tipo")
-        .setDescription("Cerca per nome o per ID")
+        .setName("type")
+        .setDescription("Search by name or by ID")
         .setRequired(true)
-        .addChoices({ name: "Nome", value: "nome" }, { name: "ID", value: "id" }),
+        .addChoices({ name: "Name", value: "name" }, { name: "ID", value: "id" }),
     )
-    .addStringOption((option) => option.setName("valore").setDescription("Nome o ID del canale").setRequired(true)),
+    .addStringOption((option) => option.setName("value").setDescription("Channel name or ID").setRequired(true)),
   execute(context) {
     return runDeferred(context, async () => {
+      const { t, locale } = context
       const key = context.env.YOUTUBE_API_KEY
       if (!key) {
-        return error("Chiave API di YouTube non configurata.")
+        return error(t(($) => $.commands.ytinfo.apiKeyMissing))
       }
 
-      const valore = getStringOption(context.interaction, "valore") ?? ""
+      const value = getStringOption(context.interaction, "value") ?? ""
 
       let channelId: string | undefined
-      if (getStringOption(context.interaction, "tipo") === "id") {
-        channelId = valore.trim()
+      if (getStringOption(context.interaction, "type") === "id") {
+        channelId = value.trim()
       } else {
         try {
           channelId = (
             await fetchJson<SearchResponse>(
               `${API_BASE}/search?part=snippet&type=channel&maxResults=1` +
-                `&q=${encodeURIComponent(valore)}&key=${encodeURIComponent(key)}`,
+                `&q=${encodeURIComponent(value)}&key=${encodeURIComponent(key)}`,
             )
           ).items?.[0]?.id?.channelId
         } catch (searchError) {
           console.error("YouTube search failed", searchError)
-          return apiError(searchError)
+          return apiError(searchError, t)
         }
         if (!channelId) {
-          return error(`Nessun canale trovato per **${valore}**.`)
+          return error(t(($) => $.commands.ytinfo.noChannel, { value }))
         }
       }
 
@@ -97,38 +99,42 @@ export const ytinfoCommand: Command = {
         )
       } catch (channelError) {
         console.error("YouTube channels request failed", channelError)
-        return apiError(channelError)
+        return apiError(channelError, t)
       }
 
       const channel = data.items?.[0]
       if (!channel?.snippet) {
-        return error(`Nessun canale trovato per **${valore}**.`)
+        return error(t(($) => $.commands.ytinfo.noChannel, { value }))
       }
 
       const snippet = channel.snippet
       const statistics = channel.statistics ?? {}
       const fields: APIEmbedField[] = [
         {
-          name: "Iscritti",
-          value: statistics.hiddenSubscriberCount ? "Nascosti" : formatCount(statistics.subscriberCount),
+          name: t(($) => $.commands.ytinfo.subscribers),
+          value: statistics.hiddenSubscriberCount
+            ? t(($) => $.commands.ytinfo.hidden)
+            : formatCount(statistics.subscriberCount),
           inline: true,
         },
-        { name: "Video", value: formatCount(statistics.videoCount), inline: true },
-        { name: "Visualizzazioni", value: formatCount(statistics.viewCount), inline: true },
+        { name: t(($) => $.commands.ytinfo.videos), value: formatCount(statistics.videoCount), inline: true },
+        { name: t(($) => $.commands.ytinfo.views), value: formatCount(statistics.viewCount), inline: true },
         {
-          name: "Paese",
-          value: snippet.country ? getCountryName(snippet.country) : "Sconosciuto",
+          name: t(($) => $.commands.ytinfo.country),
+          value: snippet.country ? getCountryName(snippet.country, locale) : t(($) => $.commands.ytinfo.unknown),
           inline: true,
         },
         {
-          name: "Creato il",
-          value: snippet.publishedAt ? formatIsoTimestamp(snippet.publishedAt) : "Sconosciuto",
+          name: t(($) => $.commands.ytinfo.created),
+          value: snippet.publishedAt
+            ? formatIsoTimestamp(snippet.publishedAt, locale)
+            : t(($) => $.commands.ytinfo.unknown),
           inline: true,
         },
       ]
       if (snippet.description) {
         fields.push({
-          name: "Descrizione",
+          name: t(($) => $.commands.ytinfo.description),
           value: snippet.description.length > 200 ? `${snippet.description.slice(0, 200)}…` : snippet.description,
         })
       }
@@ -138,7 +144,7 @@ export const ytinfoCommand: Command = {
         embeds: [
           {
             color: 0xff0000,
-            title: snippet.title ?? valore,
+            title: snippet.title ?? value,
             thumbnail: thumbUrl ? { url: thumbUrl } : undefined,
             fields,
           },

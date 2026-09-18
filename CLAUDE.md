@@ -167,17 +167,20 @@ This runs on workerd, not Node.
 
 ## 7. Language
 
-- **User-facing strings are Italian** — embed text, command descriptions, error messages.
-- **Everything else is English** — identifiers, comments, `console.error` messages, commit
+- **User-facing strings go through `t()`** — embed text, errors and messages are looked up in the locale files (`src/locales/en.ts` is the source of truth, `it.ts` mirrors it). Never inline user-facing literals.
+- **Everything else is English too** — identifiers, comments, `console.error` messages, commit
   messages, and this file.
 
 ```ts
 ✗ description: "No results found."
-✓ description: "Nessun risultato."
+✓ description: t(($) => $.commands.example.empty)
 ✓ console.error("Deferred command failed", error);
 ```
 
-Message templates use `{{utente}}` and `{{membri}}` (see `gateway/messages.ts`).
+Message templates use `{{utente}}` and `{{membri}}` (see `gateway/messages.ts`). Slash-command
+descriptions stay English in the builders and are localized at registration time from
+`src/locales/descriptions.it.ts`. AI-generated summaries and tag replies use the language of the
+messages they answer.
 
 ## 8. Comments
 
@@ -188,7 +191,7 @@ a deliberate oddity, a temporary state. NEVER narrate what the code does.
 
 ```ts
 ✗ // Fetch the weather data
-✗ /** Returns the Italian description. */
+✗ /** Returns the weather description. */
 ✓ // REST message payloads carry no guild member, so server nicknames need their own lookup.
 ```
 

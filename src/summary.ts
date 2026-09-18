@@ -1,7 +1,15 @@
 import { APICallError, generateText } from "ai"
 import { type APIGuildMember, type APIMessage, type REST, Routes } from "discord.js"
+import type { TFunction } from "i18next"
 import { createWorkersAI } from "workers-ai-provider"
-import { listSummaryChannels, removeSummaryChannel, type SummaryChannel, updateSummaryProgress } from "./db"
+import {
+  getGuildSettings,
+  listSummaryChannels,
+  removeSummaryChannel,
+  type SummaryChannel,
+  updateSummaryProgress,
+} from "./db"
+import { createTranslator } from "./lib/i18n"
 import { ERROR_COLOR } from "./respond"
 
 const MAX_FAILURES = 3
@@ -366,17 +374,21 @@ export function clampSummary(text: string, limit = EMBED_DESCRIPTION_LIMIT) {
   return `${(cut > limit - 200 ? head.slice(0, cut) : head).trimEnd()}\u2026`
 }
 
-export function buildSummaryEmbed(summary: string, messages: TranscriptMessage[]) {
+export function buildSummaryEmbed(summary: string, messages: TranscriptMessage[], t: TFunction) {
   const first = messages[0]
   const last = messages[messages.length - 1]
   return {
-    title: "📝 Riepilogo",
+    title: t(($) => $.summary.title),
     description: clampSummary(summary),
     color: SUMMARY_COLOR,
     footer: {
-      text: `${messages.length} messages · ${
-        first && last ? `from ${formatTime(first.timestamp)} to ${formatTime(last.timestamp)}` : "no time range"
-      }`,
+      text: t(($) => $.summary.footer, {
+        count: messages.length,
+        range:
+          first && last
+            ? t(($) => $.summary.range, { first: formatTime(first.timestamp), last: formatTime(last.timestamp) })
+            : t(($) => $.summary.noTimeRange),
+      }),
     },
     timestamp: new Date().toISOString(),
   }
@@ -635,11 +647,14 @@ async function processChannel(env: Env, deps: SummaryDeps, channel: SummaryChann
       return posted
     }
 
+    const settings = await getGuildSettings(env.DB, channel.guildId)
+    const t = createTranslator(settings?.locale ?? undefined)
+
     try {
       await deps.rest.post(Routes.channelMessages(channel.channelId), {
         body: {
           content: "@here #summary",
-          embeds: [buildSummaryEmbed(summary, windowMessages)],
+          embeds: [buildSummaryEmbed(summary, windowMessages, t)],
         },
       })
     } catch (error) {
@@ -679,13 +694,20 @@ export interface ManualSummaryMessage {
   channelId: string
   needed: number
   token: string
+  locale?: string
 }
 
 export interface ManualSummaryDeps extends SummaryDeps {
   applicationId: string
 }
 
-export async function runManualSummary(deps: SummaryDeps, guildId: string, channelId: string, needed: number) {
+export async function runManualSummary(
+  deps: SummaryDeps,
+  guildId: string,
+  channelId: string,
+  needed: number,
+  t: TFunction,
+) {
   try {
     const messages = await applyGuildNicknames(
       deps.rest,
@@ -693,11 +715,11 @@ export async function runManualSummary(deps: SummaryDeps, guildId: string, chann
       await fetchRecentHumans(deps.rest, channelId, needed),
     )
     if (messages.length === 0) {
-      return { embeds: [{ color: ERROR_COLOR, description: "No messages found to summarize." }] }
+      return { embeds: [{ color: ERROR_COLOR, description: t(($) => $.summary.noMessages) }] }
     }
     return {
       content: "#summary",
-      embeds: [buildSummaryEmbed(await summarizeWindow(deps.summarize, messages), messages)],
+      embeds: [buildSummaryEmbed(await summarizeWindow(deps.summarize, messages), messages, t)],
     }
   } catch (error) {
     console.error(`Manual summary failed for channel ${channelId}`, error)
@@ -705,7 +727,7 @@ export async function runManualSummary(deps: SummaryDeps, guildId: string, chann
       embeds: [
         {
           color: ERROR_COLOR,
-          description: "Couldn't create the summary. Please try again later.",
+          description: t(($) => $.summary.manualError),
         },
       ],
     }
@@ -713,7 +735,8 @@ export async function runManualSummary(deps: SummaryDeps, guildId: string, chann
 }
 
 export async function deliverManualSummary(deps: ManualSummaryDeps, message: ManualSummaryMessage) {
-  const body = await runManualSummary(deps, message.guildId, message.channelId, message.needed)
+  const t = createTranslator(message.locale)
+  const body = await runManualSummary(deps, message.guildId, message.channelId, message.needed, t)
   await deps.rest.patch(Routes.webhookMessage(deps.applicationId, message.token, "@original"), {
     body,
   })

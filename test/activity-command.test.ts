@@ -7,8 +7,11 @@ import {
 } from "discord.js"
 import { describe, expect, it, vi } from "vitest"
 import { type ActivityReportMessage, activityCommand, deliverActivityReport } from "../src/commands/activity"
+import { createTranslator } from "../src/lib/i18n"
+import { ephemeralError } from "../src/respond"
 
 const DAY_MS = 24 * 60 * 60 * 1000
+const t = createTranslator("en")
 
 interface Sent {
   authorId: string
@@ -50,7 +53,7 @@ function createWorker(history: History) {
   }
 }
 
-const job: ActivityReportMessage = { kind: "activity", channelId: "canale", token: "token" }
+const job: ActivityReportMessage = { kind: "activity", channelId: "canale", token: "token", locale: "en" }
 
 function firstEmbed(patched: { embeds: APIEmbed[] }[]) {
   return patched[0]?.embeds[0]
@@ -76,6 +79,8 @@ describe("activityCommand", () => {
 
     const response = await activityCommand.execute({
       env,
+      t,
+      locale: "en",
       rest: {} as unknown as REST,
       interaction: interaction as unknown as APIChatInputApplicationCommandInteraction,
       waitUntil: vi.fn(),
@@ -90,6 +95,8 @@ describe("activityCommand", () => {
 
     const response = await activityCommand.execute({
       env,
+      t,
+      locale: "en",
       rest: {} as unknown as REST,
       interaction: createInteraction(),
       waitUntil,
@@ -100,6 +107,7 @@ describe("activityCommand", () => {
       kind: "activity",
       channelId: "canale-corrente",
       token: "token",
+      locale: "en",
     })
     expect(waitUntil).not.toHaveBeenCalled()
   })
@@ -109,10 +117,13 @@ describe("activityCommand", () => {
 
     await activityCommand.execute({
       env,
+      t,
+      locale: "en",
       rest: {} as unknown as REST,
-      interaction: createInteraction([
-        { name: "canale", type: ApplicationCommandOptionType.Channel, value: "altro-canale" },
-      ]),
+      interaction: {
+        ...createInteraction([{ name: "channel", type: ApplicationCommandOptionType.Channel, value: "altro-canale" }]),
+        app_permissions: "0",
+      },
       waitUntil: vi.fn(),
     })
 
@@ -120,6 +131,7 @@ describe("activityCommand", () => {
       kind: "activity",
       channelId: "altro-canale",
       token: "token",
+      locale: "en",
     })
   })
 
@@ -132,12 +144,31 @@ describe("activityCommand", () => {
 
     const response = await activityCommand.execute({
       env,
+      t,
+      locale: "en",
       rest: {} as unknown as REST,
       interaction: createInteraction(),
       waitUntil: vi.fn(),
     })
 
     expect(response.type).toBe(InteractionResponseType.ChannelMessageWithSource)
+  })
+
+  it("refuses the current channel when the bot cannot read its history", async () => {
+    const { env, send } = createEnv()
+    const interaction = { ...createInteraction(), app_permissions: "0" }
+
+    const response = await activityCommand.execute({
+      env,
+      t,
+      locale: "en",
+      rest: {} as unknown as REST,
+      interaction: interaction as unknown as APIChatInputApplicationCommandInteraction,
+      waitUntil: vi.fn(),
+    })
+
+    expect(response).toEqual(ephemeralError("I'm missing the **Read Message History** permission in this channel."))
+    expect(send).not.toHaveBeenCalled()
   })
 })
 
@@ -157,15 +188,15 @@ describe("deliverActivityReport", () => {
     await deliverActivityReport(deps, job)
 
     const embed = firstEmbed(patched)
-    expect(embed?.description).toContain("🥇 <@10> — **3** messaggi · 50.0%")
-    expect(embed?.description).toContain("🥈 <@20> — **2** messaggi · 33.3%")
-    expect(embed?.description).toContain("🥉 <@30> — **1** messaggi · 16.7%")
+    expect(embed?.description).toContain("🥇 <@10> — **3** messages · 50.0%")
+    expect(embed?.description).toContain("🥈 <@20> — **2** messages · 33.3%")
+    expect(embed?.description).toContain("🥉 <@30> — **1** messages · 16.7%")
     expect(embed?.fields).toEqual([
-      { name: "Canale", value: "<#canale>", inline: true },
-      { name: "Messaggi analizzati", value: "6", inline: true },
-      { name: "Partecipanti", value: "3", inline: true },
+      { name: "Channel", value: "<#canale>", inline: true },
+      { name: "Messages analyzed", value: "6", inline: true },
+      { name: "Participants", value: "3", inline: true },
     ])
-    expect(embed?.footer?.text).toBe("Ultimi 7 giorni · solo testo, bot esclusi")
+    expect(embed?.footer?.text).toBe("Last 7 days · text only, bots excluded")
   })
 
   it("stops at the one week boundary", async () => {
@@ -229,7 +260,7 @@ describe("deliverActivityReport", () => {
 
     await deliverActivityReport(deps, job)
 
-    expect(firstEmbed(patched)?.description).toContain("Nessun messaggio negli ultimi 7 giorni")
+    expect(firstEmbed(patched)?.description).toContain("No messages in <#canale> over the last 7 days")
   })
 
   it("reports a channel it cannot read", async () => {
@@ -243,6 +274,6 @@ describe("deliverActivityReport", () => {
 
     await deliverActivityReport(deps, job)
 
-    expect(firstEmbed(patched)?.description).toContain("Non riesco a leggere i messaggi")
+    expect(firstEmbed(patched)?.description).toContain("I can't read messages")
   })
 })
