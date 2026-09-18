@@ -13,10 +13,12 @@ import {
   fetchRecentHumans,
   getSummaryStatus,
   type ManualSummaryDeps,
+  pickNemesis,
   runManualSummary,
   runSummaryPoll,
   SUMMARY_PROMPTS,
   type SummaryDeps,
+  summarizeWindow,
   type TranscriptMessage,
 } from "../src/summary"
 
@@ -133,36 +135,83 @@ describe("SUMMARY_PROMPTS", () => {
     }
   })
 
-  it("carries the budget and the three parts on the prompts that fill the embed", () => {
+  it("carries the budget and the shape on the prompts that fill the embed", () => {
     for (const prompt of embedPrompts) {
-      expect(prompt).toContain("2000 characters")
-      expect(prompt).toContain("TL;DR")
-      expect(prompt).toContain("Key moments")
-      expect(prompt).toContain("The verdict")
-      expect(prompt).toContain("three to five bullets")
+      expect(prompt).toContain("900 characters")
+      expect(prompt).toContain("opening line")
+      expect(prompt).toContain("two or three beats")
+      expect(prompt).toContain("The verdict is one line")
+      expect(prompt).toContain("No headings, no bullets")
+      expect(prompt).not.toContain("TL;DR")
+    }
+  })
+
+  it("keeps the report literal and lets the commentary off the leash", () => {
+    for (const prompt of embedPrompts) {
+      expect(prompt).toContain("What happened is reported literally")
+      expect(prompt).toContain("How you describe it is unhinged")
+      expect(prompt).toContain("A beat that carries no joke gets cut")
+      expect(prompt).toContain("Lie outright whenever it is funnier")
+      expect(prompt).toContain("nobody could believe it")
     }
   })
 
   it("keeps the facts somebody can rely on out of reach of the jokes", () => {
     for (const prompt of embedPrompts) {
-      expect(prompt).toContain("The TL;DR and the verdict are strictly true")
-      expect(prompt).toContain("never invent a decision, a plan, a date or a time that nobody said")
-      expect(prompt).toContain("exaggeration hangs on something somebody actually typed")
-      expect(prompt).toContain("never move what one person said onto another")
+      expect(prompt).toContain("Literal: who typed what, what got decided")
+      expect(prompt).toContain("Never invent a decision, a plan, a date or a time")
+      expect(prompt).toContain("the outcome something that did not happen")
+      expect(prompt).toContain("could be read as a real event nobody")
+    }
+  })
+
+  it("keeps every action on the person who typed it", () => {
+    for (const prompt of embedPrompts) {
+      expect(prompt).toContain("One beat, one author")
+      expect(prompt).toContain("Every name is copied from the line you are reporting")
+      expect(prompt).toContain("Never hide an author behind a plural or an impersonal verb")
+      expect(prompt).toContain("cut the sentence")
+      expect(prompt).toContain("ask of every name and every action")
+      expect(prompt).toContain("never translate, shorten or correct them")
     }
   })
 
   it("keeps sensitive ground off the table even where exaggeration is licensed", () => {
     for (const prompt of embedPrompts) {
-      expect(prompt).toContain("Never invent or joke about health, physical appearance, family")
+      expect(prompt).toContain("Never joke about health, bodies, height, physical appearance, family, sexuality")
+      expect(prompt).toContain("This holds even when the chat spends the whole")
+      expect(prompt).toContain("you neither repeat")
     }
   })
 
-  it("spares whoever gave it nothing instead of filling a bullet with them", () => {
+  it("refuses to hand the crown to whoever typed the vilest line", () => {
     for (const prompt of embedPrompts) {
-      expect(prompt).toContain("Go after the choices, not the people")
-      expect(prompt).toContain("Nobody is owed a kicking")
-      expect(prompt).toContain("dragged in to fill a bullet")
+      expect(prompt).toContain("WHAT YOU DO NOT AMPLIFY")
+      expect(prompt).toContain("That is not material")
+      expect(prompt).toContain("never hand it the crown")
+      expect(prompt).toContain("Being vile is not an achievement")
+      expect(prompt).toContain("never on the worst")
+    }
+  })
+
+  it("bans the recap from opening by naming itself", () => {
+    for (const prompt of embedPrompts) {
+      expect(prompt).toContain("never with the name of what you are")
+      expect(prompt).toContain('"riassunto", "recap", "summary"')
+      expect(prompt).toContain("The first sentence is already the story")
+    }
+  })
+
+  it("keeps one person on one spelling of their nickname", () => {
+    for (const prompt of embedPrompts) {
+      expect(prompt).toContain("never in two forms: one person, one spelling")
+    }
+  })
+
+  it("spares whoever gave it nothing instead of padding the summary with them", () => {
+    for (const prompt of embedPrompts) {
+      expect(prompt).toContain("typed nothing worth a beat is left out")
+      expect(prompt).toContain("not dragged in to fill one")
       expect(prompt).not.toContain("Blast everyone by name")
       expect(prompt).not.toContain("No survivors")
     }
@@ -170,8 +219,7 @@ describe("SUMMARY_PROMPTS", () => {
 
   it("aims what it does say at what people wrote, not at what they are", () => {
     for (const prompt of embedPrompts) {
-      expect(prompt).toContain("what you comment on")
-      expect(prompt).toContain("what people chose to type, never what they are")
+      expect(prompt).toContain("what you go after is what people chose to type, never what they are")
     }
   })
 
@@ -190,16 +238,121 @@ describe("SUMMARY_PROMPTS", () => {
     }
   })
 
-  it("tells the narration to paraphrase instead of quoting", () => {
+  it("keeps the narration off literal quotation altogether", () => {
     for (const prompt of embedPrompts) {
-      expect(prompt).toContain("no literal quotations, no quotation marks")
-      expect(prompt).toContain("rather than quoting them")
+      expect(prompt).toContain("dropping the quotation marks is not enough")
+      expect(prompt).toContain("If three words in a row came straight off a line somebody typed")
+      expect(prompt).toContain("the words on the page are yours")
+      expect(prompt).toContain("never quote them, and never use quotation marks")
+      expect(prompt).toContain("Retelling is not licence to drift")
+      expect(prompt).not.toContain("can be quoted verbatim")
     }
+  })
+
+  it("sharpens the edge instead of leaving the tone to chance", () => {
+    for (const prompt of embedPrompts) {
+      expect(prompt).toContain("EDGE - how hard you hit")
+      expect(prompt).toContain("Every beat costs somebody something")
+      expect(prompt).toContain("could not be aimed at")
+      expect(prompt).toContain("the verdict is the hardest line")
+      expect(prompt).toContain("No affection, no softening")
+      expect(prompt).toContain("Harder is not longer")
+      expect(prompt).toContain("Lie outright whenever it is funnier")
+    }
+  })
+
+  it("hands the narrator a nemesis to prosecute and keeps the charge invented", () => {
+    for (const prompt of embedPrompts) {
+      expect(prompt).toContain("NEMESIS - one per summary")
+      expect(prompt).toContain("you are prosecuting them")
+      expect(prompt).toContain("The line is real, the indictment is theatre")
+      expect(prompt).toContain("Keep the case open across the beats")
+      expect(prompt).toContain("Never a real accusation")
+      expect(prompt).toContain("nothing that would")
+      expect(prompt).toContain("still be an insult if it turned out to be true")
+    }
+  })
+
+  it("names the nemesis after the text, where the transcript cannot bury it", () => {
+    expect(SUMMARY_PROMPTS.nemesis("Titan")).toContain("Titan")
+    expect(SUMMARY_PROMPTS.nemesis("Titan")).toContain("something they really typed")
+    expect(SUMMARY_PROMPTS.chunk).not.toContain("nemesis")
   })
 
   it("keeps the chronicler voice out of the neutral chunk pass", () => {
     expect(SUMMARY_PROMPTS.chunk).not.toContain("in-house chronicler")
     expect(SUMMARY_PROMPTS.chunk).toContain("Preserve the memorable lines as they were written")
+    expect(SUMMARY_PROMPTS.chunk).toContain("Open every point with the nickname of whoever typed it")
+    expect(SUMMARY_PROMPTS.merge).toContain("kept word for word are there so you know what was really said")
+  })
+})
+
+function transcript(authorName: string, index: number, content = "ciao"): TranscriptMessage {
+  return {
+    id: String(100 + index),
+    timestamp: "2026-01-01T10:00:00.000Z",
+    authorId: authorName,
+    authorName,
+    content,
+  }
+}
+
+describe("pickNemesis", () => {
+  const window = ["Roby", "Claudia", "Roby", "Ago"].map((author, index) => transcript(author, index))
+
+  it("draws the authors of the window and nobody else", () => {
+    const drawn = new Set(Array.from({ length: 30 }, (_, step) => pickNemesis(window, () => step / 30)))
+
+    expect(drawn).toEqual(new Set(["Roby", "Claudia", "Ago"]))
+  })
+
+  it("counts a repeated author once instead of stacking the draw towards them", () => {
+    expect(pickNemesis(window, () => 0)).toBe("Roby")
+    expect(pickNemesis(window, () => 0.34)).toBe("Claudia")
+    expect(pickNemesis(window, () => 0.67)).toBe("Ago")
+  })
+
+  it("never falls off the end of the list", () => {
+    expect(pickNemesis(window, () => 0.999999)).toBe("Ago")
+    expect(pickNemesis(window, () => 1)).toBe("Ago")
+  })
+
+  it("has nobody to prosecute in an empty window", () => {
+    expect(pickNemesis([], () => 0)).toBeUndefined()
+  })
+})
+
+describe("summarizeWindow", () => {
+  it("names the nemesis last, after the language reminder", async () => {
+    const summarize = createSummarize()
+
+    await summarizeWindow(
+      summarize,
+      ["Roby", "Claudia"].map((author, index) => transcript(author, index)),
+      SUMMARY_PROMPTS,
+      () => 0.6,
+    )
+
+    const call = summarize.mock.calls[0]
+    expect(call?.[0]).toBe(SUMMARY_PROMPTS.single)
+    expect(call?.[1]).toContain(SUMMARY_PROMPTS.reminder)
+    expect(call?.[1].endsWith(SUMMARY_PROMPTS.nemesis("Claudia"))).toBe(true)
+  })
+
+  it("keeps the nemesis out of the neutral chunk pass and hands it to the merge", async () => {
+    const summarize = createSummarize()
+    const long = ["Roby", "Claudia"].map((author, index) => transcript(author, index, "x".repeat(60_000)))
+
+    await summarizeWindow(summarize, long, SUMMARY_PROMPTS, () => 0)
+
+    expect(summarize.mock.calls).toHaveLength(3)
+    for (const [system, user] of summarize.mock.calls.slice(0, 2)) {
+      expect(system).toBe(SUMMARY_PROMPTS.chunk)
+      expect(user).not.toContain("nemesis")
+    }
+    const merge = summarize.mock.calls[2]
+    expect(merge?.[0]).toBe(SUMMARY_PROMPTS.merge)
+    expect(merge?.[1]).toContain(SUMMARY_PROMPTS.nemesis("Roby"))
   })
 })
 

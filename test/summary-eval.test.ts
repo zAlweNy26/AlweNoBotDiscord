@@ -67,6 +67,27 @@ const TRAPS_EN = [
   "brawl",
 ]
 
+interface AttributionTrap {
+  author: string
+  context: string
+}
+
+// The file exchange in the chaos corpus belongs to Claudia and Ludo only; naming anybody
+// else next to it is a swapped subject, even when the quoted line is real.
+const ATTRIBUTION_TRAPS_IT: AttributionTrap[] = [
+  { author: "Titan", context: "quale file" },
+  { author: "Titan", context: "sai quale" },
+  { author: "Titan", context: "meglio così" },
+  { author: "Fede", context: "amareggiata" },
+]
+
+const ATTRIBUTION_TRAPS_EN: AttributionTrap[] = [
+  { author: "Titan", context: "which file" },
+  { author: "Titan", context: "you know which" },
+  { author: "Titan", context: "better this way" },
+  { author: "Fede", context: "bitter" },
+]
+
 const ENGLISH_MARKERS = [/\bthe\b/i, /\band\b/i, /\bwith\b/i, /\bthey\b/i, /\bwas\b/i]
 const ITALIAN_MARKERS = [/\bche\b/i, /\bnon\b/i, /\bper\b/i, /\bcon\b/i, /\buna\b/i]
 
@@ -110,6 +131,24 @@ function countMatches(text: string, needles: string[]) {
   return needles.filter((needle) => lower.includes(needle))
 }
 
+function findAttributionTraps(text: string, traps: AttributionTrap[]) {
+  const lower = text.toLowerCase()
+  const window = 120
+  return traps.filter(({ author, context }) => {
+    const needle = context.toLowerCase()
+    let index = lower.indexOf(needle)
+    while (index !== -1) {
+      const start = Math.max(0, index - window)
+      const end = Math.min(lower.length, index + needle.length + window)
+      if (lower.slice(start, end).includes(author.toLowerCase())) {
+        return true
+      }
+      index = lower.indexOf(needle, index + 1)
+    }
+    return false
+  })
+}
+
 async function evalCase(
   cfg: EvalConfig,
   caseName: string,
@@ -117,6 +156,7 @@ async function evalCase(
   facts: string[],
   trapWords: string[] = TRAPS_IT,
   language: "it" | "en" = "it",
+  attributionTraps: AttributionTrap[] = [],
 ) {
   const rows: string[] = []
   const outputs: string[] = []
@@ -128,11 +168,12 @@ async function evalCase(
       const summary = await summarizeWindow(makeSummarize((env as unknown as Env).AI, cfg), messages, cfg.prompts)
       const traps = countMatches(summary, trapWords)
       const covered = countMatches(summary, facts)
+      const swapped = findAttributionTraps(summary, attributionTraps)
       const detected = detectLanguage(summary)
       const quoted = (summary.match(/["\u00ab\u00bb\u201c\u201d]/g) ?? []).length
       successes += 1
       rows.push(
-        `${cfg.label}\trun ${run}\t${Date.now() - started}ms\ttraps=${traps.length === 0 ? "none" : traps.join("|")}\tfacts=${covered.length}/${facts.length}\tlang=${detected}${detected === language ? "" : " DRIFT"}\tquotes=${quoted}\tchars=${summary.length}`,
+        `${cfg.label}\trun ${run}\t${Date.now() - started}ms\ttraps=${traps.length === 0 ? "none" : traps.join("|")}\tattrib=${swapped.length === 0 ? "none" : swapped.map(({ author, context }) => `${author}~${context}`).join("|")}\tfacts=${covered.length}/${facts.length}\tlang=${detected}${detected === language ? "" : " DRIFT"}\tquotes=${quoted}\tchars=${summary.length}`,
       )
       outputs.push(`### ${cfg.label} / run ${run}\n${summary}`)
     } catch (error) {
@@ -283,11 +324,11 @@ const CHUNKED_MESSAGES: TranscriptMessage[] = CHUNKED_FACT_SENTENCES.map((fact, 
 describe.skipIf(!enabled)("summary eval", () => {
   for (const cfg of selected) {
     it(`${cfg.label} / chaos-short`, { timeout: 480_000 }, async () => {
-      await evalCase(cfg, "chaos-short", CHAOS_MESSAGES, CHAOS_FACTS)
+      await evalCase(cfg, "chaos-short", CHAOS_MESSAGES, CHAOS_FACTS, TRAPS_IT, "it", ATTRIBUTION_TRAPS_IT)
     })
 
     it(`${cfg.label} / chaos-short-en`, { timeout: 480_000 }, async () => {
-      await evalCase(cfg, "chaos-short-en", CHAOS_EN_MESSAGES, CHAOS_EN_FACTS, TRAPS_EN, "en")
+      await evalCase(cfg, "chaos-short-en", CHAOS_EN_MESSAGES, CHAOS_EN_FACTS, TRAPS_EN, "en", ATTRIBUTION_TRAPS_EN)
     })
 
     it(`${cfg.label} / chunked`, { timeout: 900_000 }, async () => {
