@@ -30,6 +30,7 @@ function loadDevVars() {
 const vars: Record<string, string | undefined> = { ...loadDevVars(), ...process.env }
 const token = vars.DISCORD_TOKEN
 const applicationId = vars.DISCORD_APPLICATION_ID
+const guildId = vars.DISCORD_GUILD_ID
 
 if (!token || !applicationId) {
   console.error("Set DISCORD_TOKEN and DISCORD_APPLICATION_ID in .dev.vars")
@@ -39,5 +40,11 @@ if (!token || !applicationId) {
 const body = commands.map((command) => command.data.toJSON())
 applyCommandLocalizations(body, commandDescriptionLocalizations)
 
-await new REST({ version: "10" }).setToken(token).put(Routes.applicationCommands(applicationId), { body })
-console.log(`Registered ${body.length} global commands.`)
+const rest = new REST({ version: "10" }).setToken(token)
+if (guildId) {
+  await rest.put(Routes.applicationGuildCommands(applicationId, guildId), { body })
+  console.log(`Registered ${body.length} commands in guild ${guildId}.`)
+} else {
+  await rest.put(Routes.applicationCommands(applicationId), { body })
+  console.log(`Registered ${body.length} global commands.`)
+}

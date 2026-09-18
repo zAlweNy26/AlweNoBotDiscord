@@ -57,7 +57,7 @@ YOUTUBE_API_KEY=
    - enable the **Server Members Intent** (required for welcome/farewell/counter)
    - enable the **Message Content Intent** (required for `/summary`)
 
-`bun run register` remains available to refresh the Discord-side command definitions without deploying (for example description-only changes).
+`bun run register` remains available to refresh the Discord-side command definitions without deploying (for example description-only changes). Set `DISCORD_GUILD_ID` in `.dev.vars` to register the commands in a single development server instead, where updates appear instantly; remove it to go back to global registration.
 
 ## Commands
 

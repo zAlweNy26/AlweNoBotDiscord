@@ -1,6 +1,5 @@
 import {
   ActionRowBuilder,
-  type APIApplicationCommandInteractionDataSubcommandOption,
   type APIMessage,
   type APIMessageComponentInteraction,
   ApplicationCommandOptionType,
@@ -16,22 +15,13 @@ import type { TFunction } from "i18next"
 import { addRoleButton, deleteRoleButtonsForMessage, getRoleButton } from "../db"
 import { permissionErrorMessage } from "../lib/discord-errors"
 import { ERROR_COLOR, ephemeralEmbed, ephemeralError, SUCCESS_COLOR } from "../respond"
+import { getSubOption } from "./options"
 import type { Command } from "./types"
 
 const CUSTOM_ID_PREFIX = "role:"
 
 function messageIdFromInput(input: string) {
   return /(\d{17,20})/.exec(input.trim())?.[1] ?? null
-}
-
-function getSubOption(
-  subcommand: APIApplicationCommandInteractionDataSubcommandOption,
-  name: string,
-  type: ApplicationCommandOptionType,
-) {
-  const option = subcommand.options?.find((candidate) => candidate.name === name && candidate.type === type)
-  if (!option || !("value" in option)) return undefined
-  return typeof option.value === "string" ? option.value : undefined
 }
 
 export async function handleRoleButton(
@@ -130,11 +120,12 @@ export const reactionroleCommand: Command = {
     if (subcommand.name === "create") {
       const channelId = getSubOption(subcommand, "channel", ApplicationCommandOptionType.Channel)
       const roleId = getSubOption(subcommand, "role", ApplicationCommandOptionType.Role)
-      if (!channelId || !roleId) {
+      if (typeof channelId !== "string" || typeof roleId !== "string") {
         return ephemeralError(t(($) => $.commands.reactionrole.missingArgs))
       }
+      const rawLabel = getSubOption(subcommand, "label", ApplicationCommandOptionType.String)
       const label =
-        getSubOption(subcommand, "label", ApplicationCommandOptionType.String) ??
+        (typeof rawLabel === "string" ? rawLabel : undefined) ??
         interaction.data.resolved?.roles?.[roleId]?.name ??
         t(($) => $.commands.reactionrole.defaultLabel)
       await addRoleButton(env.DB, {
@@ -166,7 +157,7 @@ export const reactionroleCommand: Command = {
     }
     if (subcommand.name === "delete") {
       const rawMessage = getSubOption(subcommand, "message", ApplicationCommandOptionType.String)
-      const messageId = rawMessage ? messageIdFromInput(rawMessage) : null
+      const messageId = typeof rawMessage === "string" ? messageIdFromInput(rawMessage) : null
       if (!messageId) {
         return ephemeralError(t(($) => $.commands.reactionrole.invalidMessage))
       }

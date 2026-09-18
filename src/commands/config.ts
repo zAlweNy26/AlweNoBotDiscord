@@ -1,5 +1,4 @@
 import {
-  type APIApplicationCommandInteractionDataSubcommandOption,
   type ApplicationCommandOptionAllowedChannelTypes,
   ApplicationCommandOptionType,
   ChannelType,
@@ -8,23 +7,8 @@ import {
 } from "discord.js"
 import { ensureGuildSettings, type GuildSettingsPatch, updateGuildSettings } from "../db"
 import { embedResponse, ephemeralEmbed, ephemeralError, SUCCESS_COLOR } from "../respond"
+import { getSubcommand, getSubOption } from "./options"
 import type { Command } from "./types"
-
-function getSubcommand(interaction: Parameters<Command["execute"]>[0]["interaction"]) {
-  return interaction.data.options?.[0]?.type === ApplicationCommandOptionType.Subcommand
-    ? interaction.data.options?.[0]
-    : undefined
-}
-
-function getSubOption(
-  subcommand: APIApplicationCommandInteractionDataSubcommandOption,
-  name: string,
-  type: ApplicationCommandOptionType,
-) {
-  const option = subcommand.options?.find((candidate) => candidate.name === name && candidate.type === type)
-  if (!option || !("value" in option)) return undefined
-  return typeof option.value === "string" || typeof option.value === "number" ? option.value : undefined
-}
 
 function buildConfigCommand(spec: {
   name: "welcome" | "farewell" | "counter"
@@ -65,7 +49,7 @@ function buildConfigCommand(spec: {
     .addSubcommand((subcommand) => subcommand.setName("show").setDescription(`Show the ${spec.label} configuration`))
 
   return {
-    category: "Info",
+    category: "Mod",
     data,
     async execute({ env, interaction, t }) {
       const guildId = interaction.guild_id

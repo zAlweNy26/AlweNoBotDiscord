@@ -1,7 +1,13 @@
-import { ChannelType } from "discord.js"
+import {
+  type APIApplicationCommandInteractionDataSubcommandOption,
+  type APIChatInputApplicationCommandInteraction,
+  ApplicationCommandOptionType,
+  ChannelType,
+} from "discord.js"
 import { describe, expect, it } from "vitest"
 import { activityCommand } from "../src/commands/activity"
 import { counterCommand, farewellCommand, welcomeCommand } from "../src/commands/config"
+import { getSubcommand, getSubOption } from "../src/commands/options"
 import { reactionroleCommand } from "../src/commands/reactionrole"
 import { summaryCommand } from "../src/commands/summary"
 import type { Command } from "../src/commands/types"
@@ -64,5 +70,50 @@ const cases: { label: string; command: Command; path: string[]; channelTypes: Ch
 describe("channel option types", () => {
   it.each(cases)("$label restricts its channel option", ({ command, path, channelTypes }) => {
     expect(findOption(command, path)?.channel_types).toEqual(channelTypes)
+  })
+})
+
+function subcommand(name: string, options: unknown[] = []) {
+  return {
+    type: ApplicationCommandOptionType.Subcommand,
+    name,
+    options,
+  } as unknown as APIApplicationCommandInteractionDataSubcommandOption
+}
+
+function interactionWith(options: unknown[]) {
+  return { data: { options } } as unknown as APIChatInputApplicationCommandInteraction
+}
+
+describe("subcommand option access", () => {
+  it("returns the first option when it is a subcommand", () => {
+    expect(getSubcommand(interactionWith([subcommand("add")]))?.name).toBe("add")
+  })
+
+  it("returns undefined when the first option is not a subcommand", () => {
+    const other = { type: ApplicationCommandOptionType.String, name: "value", value: "x" }
+    expect(getSubcommand(interactionWith([other]))).toBeUndefined()
+  })
+
+  it("returns undefined without options", () => {
+    expect(getSubcommand(interactionWith([]))).toBeUndefined()
+  })
+
+  it("reads a matching sub-option", () => {
+    const add = subcommand("add", [
+      { type: ApplicationCommandOptionType.Integer, name: "threshold", value: 25 },
+      { type: ApplicationCommandOptionType.Channel, name: "channel", value: "123" },
+    ])
+    expect(getSubOption(add, "channel", ApplicationCommandOptionType.Channel)).toBe("123")
+    expect(getSubOption(add, "threshold", ApplicationCommandOptionType.Integer)).toBe(25)
+  })
+
+  it("ignores a name match with the wrong type", () => {
+    const add = subcommand("add", [{ type: ApplicationCommandOptionType.Integer, name: "threshold", value: 25 }])
+    expect(getSubOption(add, "threshold", ApplicationCommandOptionType.String)).toBeUndefined()
+  })
+
+  it("returns undefined for a missing sub-option", () => {
+    expect(getSubOption(subcommand("remove"), "channel", ApplicationCommandOptionType.Channel)).toBeUndefined()
   })
 })

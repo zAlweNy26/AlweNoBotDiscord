@@ -11,6 +11,7 @@ import { addSummaryChannel, getSummaryChannel, listSummaryChannelsForGuild, remo
 import { permissionErrorMessage } from "../lib/discord-errors"
 import { deferredResponse, ephemeralEmbed, ephemeralError, SUCCESS_COLOR } from "../respond"
 import { getSummaryStatus } from "../summary"
+import { getSubcommand, getSubOption } from "./options"
 import type { Command } from "./types"
 
 const MIN_THRESHOLD = 10
@@ -21,29 +22,13 @@ function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max)
 }
 
-function getSubcommand(interaction: Parameters<Command["execute"]>[0]["interaction"]) {
-  return interaction.data.options?.[0]?.type === ApplicationCommandOptionType.Subcommand
-    ? interaction.data.options?.[0]
-    : undefined
-}
-
-function getSubOption(
-  subcommand: APIApplicationCommandInteractionDataSubcommandOption,
-  name: string,
-  type: ApplicationCommandOptionType,
-) {
-  const option = subcommand.options?.find((candidate) => candidate.name === name && candidate.type === type)
-  if (!option || !("value" in option)) return undefined
-  return typeof option.value === "string" || typeof option.value === "number" ? option.value : undefined
-}
-
 function getChannelId(subcommand: APIApplicationCommandInteractionDataSubcommandOption) {
   const channelId = getSubOption(subcommand, "channel", ApplicationCommandOptionType.Channel)
   return typeof channelId === "string" ? channelId : undefined
 }
 
 export const summaryCommand: Command = {
-  category: "Info",
+  category: "Mod",
   data: new SlashCommandBuilder()
     .setName("summary")
     .setDescription("Configure automatic channel summaries")

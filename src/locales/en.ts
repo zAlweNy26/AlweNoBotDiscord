@@ -213,13 +213,6 @@ export const en = {
       apiLatency: "API latency",
       servers: "Servers",
       title: "📊 Statistics",
-      units: {
-        days: "d",
-        hours: "h",
-        minutes: "m",
-        seconds: "s",
-      },
-      uptime: "Worker uptime",
     },
     steam: {
       accountCreated: "Account created",

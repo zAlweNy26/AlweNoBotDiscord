@@ -4,7 +4,7 @@ import { ephemeralEmbed, ephemeralError, SUCCESS_COLOR } from "../respond"
 import type { Command } from "./types"
 
 export const mentionCommand: Command = {
-  category: "Info",
+  category: "Mod",
   data: new SlashCommandBuilder()
     .setName("mention")
     .setDescription("Configure the bot's replies when it is tagged")

@@ -1,15 +1,9 @@
-import { ApplicationCommandOptionType, PermissionFlagsBits, SlashCommandBuilder } from "discord.js"
+import { PermissionFlagsBits, SlashCommandBuilder } from "discord.js"
 import { getGuildSettings, updateGuildSettings } from "../db"
 import { isLocale, type Locale } from "../lib/i18n"
 import { embedResponse, ephemeralError, SUCCESS_COLOR } from "../respond"
-import { getStringOption } from "./options"
+import { getStringOption, getSubcommand } from "./options"
 import type { Command } from "./types"
-
-function getSubcommand(interaction: Parameters<Command["execute"]>[0]["interaction"]) {
-  return interaction.data.options?.[0]?.type === ApplicationCommandOptionType.Subcommand
-    ? interaction.data.options?.[0]
-    : undefined
-}
 
 const LANGUAGE_NAMES: Record<Locale, string> = {
   en: "English",

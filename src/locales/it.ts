@@ -219,13 +219,6 @@ export const it = {
       apiLatency: "Latenza API",
       servers: "Server",
       title: "📊 Statistiche",
-      units: {
-        days: "g",
-        hours: "h",
-        minutes: "m",
-        seconds: "s",
-      },
-      uptime: "Uptime del worker",
     },
     steam: {
       accountCreated: "Account creato il",
