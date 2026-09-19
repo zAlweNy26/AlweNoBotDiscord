@@ -143,9 +143,17 @@ describe("SUMMARY_PROMPTS", () => {
       expect(prompt).toContain("900 characters")
       expect(prompt).toContain("opening line")
       expect(prompt).toContain("two or three beats")
-      expect(prompt).toContain("The verdict is one line")
+      expect(prompt).toContain("The last beat is the last line")
       expect(prompt).toContain("No headings, no bullets")
       expect(prompt).not.toContain("TL;DR")
+    }
+  })
+
+  it("ends on the last beat, with no closing verdict", () => {
+    for (const prompt of embedPrompts) {
+      expect(prompt).not.toMatch(/verdict/i)
+      expect(prompt).toContain("No wrap-up")
+      expect(prompt).toContain("the material runs out and you stop")
     }
   })
 
@@ -257,7 +265,9 @@ describe("SUMMARY_PROMPTS", () => {
       expect(prompt).toContain("EDGE - how hard you hit")
       expect(prompt).toContain("Every beat costs somebody something")
       expect(prompt).toContain("could not be aimed at")
-      expect(prompt).toContain("the verdict is the hardest line")
+      expect(prompt).toContain("hardest thing you have written so far")
+      expect(prompt).toContain("Say the judgement out loud")
+      expect(prompt).toContain("Swearing is the baseline, not an event")
       expect(prompt).toContain("No affection, no softening")
       expect(prompt).toContain("Harder is not longer")
       expect(prompt).toContain("Lie outright whenever it is funnier")
@@ -269,7 +279,8 @@ describe("SUMMARY_PROMPTS", () => {
       expect(prompt).toContain("NEMESIS - one per summary")
       expect(prompt).toContain("you are prosecuting them")
       expect(prompt).toContain("The line is real, the indictment is theatre")
-      expect(prompt).toContain("Keep the case open across the beats")
+      expect(prompt).toContain("Run the case through the beats")
+      expect(prompt).toContain("no sentence, no summing-up")
       expect(prompt).toContain("Never a real accusation")
       expect(prompt).toContain("nothing that would")
       expect(prompt).toContain("still be an insult if it turned out to be true")
@@ -279,6 +290,8 @@ describe("SUMMARY_PROMPTS", () => {
   it("names the nemesis after the text, where the transcript cannot bury it", () => {
     expect(SUMMARY_PROMPTS.nemesis("Titan")).toContain("Titan")
     expect(SUMMARY_PROMPTS.nemesis("Titan")).toContain("something they really typed")
+    expect(SUMMARY_PROMPTS.nemesis("Titan")).toContain("It never closes")
+    expect(SUMMARY_PROMPTS.nemesis("Titan")).not.toContain("sentence them at the end")
     expect(SUMMARY_PROMPTS.chunk).not.toContain("nemesis")
   })
 
