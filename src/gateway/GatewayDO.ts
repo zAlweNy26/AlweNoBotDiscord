@@ -1,7 +1,9 @@
 import { type APIGuild, REST, Routes } from "discord.js"
 import { getGuildSettings } from "../db"
+import { appendLine, replyToInterfere } from "../interfere"
 import { createTranslator } from "../lib/i18n"
-import { isMentionTrigger, type MentionMessage, replyToMention } from "../mention"
+import { searchGif } from "../lib/klipy"
+import { isMentionTrigger, type MentionMessage, messageLine, replyToMention } from "../mention"
 import { createSummarizer, runSummaryPoll } from "../summary"
 import { fillMessage } from "./messages"
 
@@ -28,6 +30,9 @@ const RECONNECT_ATTEMPTS_KEY = "reconnectAttempts"
 const COUNTER_DEBOUNCE_MS = 10 * 60 * 1_000
 const MENTION_COOLDOWN_MS = 60_000
 const MENTION_DAILY_LIMIT = 100
+const INTERFERE_CHANCE = 0.25
+const INTERFERE_COOLDOWN_MS = 5 * 60 * 1_000
+const INTERFERE_DAILY_LIMIT = 20
 const DEFAULT_HEARTBEAT_INTERVAL_MS = 41_250
 const SESSION_INVALID_CODES = [4004, 4010, 4011, 4012, 4013, 4014]
 
@@ -40,13 +45,13 @@ export function reconnectDelay(attempt: number, random: () => number = Math.rand
   return Math.round(capped * (0.5 + random() * 0.5))
 }
 
-export interface MentionUsage {
+export interface BudgetUsage {
   lastUsedAt: number | undefined
   daily: { date: string; count: number } | undefined
 }
 
-export function checkMentionBudget(
-  usage: MentionUsage,
+export function checkBudget(
+  usage: BudgetUsage,
   now: number,
   cooldownMs = MENTION_COOLDOWN_MS,
   dailyLimit = MENTION_DAILY_LIMIT,
@@ -57,6 +62,10 @@ export function checkMentionBudget(
     return { allowed: false, date, count: usedToday }
   }
   return { allowed: usedToday < dailyLimit, date, count: usedToday + 1 }
+}
+
+export function shouldInterfere(random: () => number = Math.random) {
+  return random() < INTERFERE_CHANCE
 }
 
 interface GatewayMessage {
@@ -82,6 +91,7 @@ export class GatewayDO {
   private heartbeatInterval = DEFAULT_HEARTBEAT_INTERVAL_MS
   private awaitingAck = false
   private summaryPollRunning = false
+  private readonly transcript = new Map<string, string[]>()
   private readonly rest: REST
 
   constructor(
@@ -264,9 +274,15 @@ export class GatewayDO {
       case "GUILD_MEMBER_REMOVE":
         await this.handleMemberEvent("farewell", data as MemberEventData)
         break
-      case "MESSAGE_CREATE":
-        await this.handleMention(data as MentionMessage)
+      case "MESSAGE_CREATE": {
+        const message = data as MentionMessage
+        if (!message.author.bot && !message.webhook_id) {
+          this.remember(message)
+        }
+        await this.handleMention(message)
+        await this.handleInterfere(message)
         break
+      }
     }
   }
 
@@ -289,7 +305,11 @@ export class GatewayDO {
       if (!settings?.mentionEnabled) return
       if (!(await this.allowMention(message.guild_id, message.author.id))) return
       await replyToMention(
-        { rest: this.rest, summarize: createSummarizer(this.env.AI) },
+        {
+          rest: this.rest,
+          summarize: createSummarizer(this.env.AI),
+          searchGif: (query) => searchGif(this.env.KLIPY_API_KEY, query),
+        },
         message,
         this.env.DISCORD_APPLICATION_ID,
       )
@@ -300,7 +320,7 @@ export class GatewayDO {
 
   private async allowMention(guildId: string, userId: string) {
     const now = Date.now()
-    const budget = checkMentionBudget(
+    const budget = checkBudget(
       {
         lastUsedAt: await this.state.storage.get<number>(`mention-cooldown:${guildId}:${userId}`),
         daily: await this.state.storage.get<{ date: string; count: number }>(`mention-daily:${guildId}`),
@@ -311,6 +331,48 @@ export class GatewayDO {
     await this.state.storage.put(`mention-cooldown:${guildId}:${userId}`, now)
     await this.state.storage.put(`mention-daily:${guildId}`, { date: budget.date, count: budget.count })
     return true
+  }
+
+  private remember(message: MentionMessage) {
+    const key = `transcript:${message.channel_id}`
+    const line = messageLine(message, this.env.DISCORD_APPLICATION_ID)
+    this.transcript.set(key, appendLine(this.transcript.get(key) ?? [], line))
+  }
+
+  private async handleInterfere(message: MentionMessage) {
+    if (!message.guild_id || message.author.bot || message.webhook_id) return
+    if (isMentionTrigger(message, this.env.DISCORD_APPLICATION_ID)) return
+    try {
+      const settings = await getGuildSettings(this.env.DB, message.guild_id)
+      if (!settings?.interfereEnabled) return
+      const now = Date.now()
+      const cooldownKey = `interfere-cooldown:${message.guild_id}:${message.channel_id}`
+      const dailyKey = `interfere-daily:${message.guild_id}`
+      const budget = checkBudget(
+        {
+          lastUsedAt: await this.state.storage.get<number>(cooldownKey),
+          daily: await this.state.storage.get<{ date: string; count: number }>(dailyKey),
+        },
+        now,
+        INTERFERE_COOLDOWN_MS,
+        INTERFERE_DAILY_LIMIT,
+      )
+      if (!budget.allowed || !shouldInterfere()) return
+      const posted = await replyToInterfere(
+        {
+          rest: this.rest,
+          summarize: createSummarizer(this.env.AI),
+          searchGif: (query) => searchGif(this.env.KLIPY_API_KEY, query),
+        },
+        message,
+        this.transcript.get(`transcript:${message.channel_id}`) ?? [],
+      )
+      if (!posted) return
+      await this.state.storage.put(cooldownKey, now)
+      await this.state.storage.put(dailyKey, { date: budget.date, count: budget.count })
+    } catch (error) {
+      console.error(`Failed to answer a message in channel ${message.channel_id}`, error)
+    }
   }
 
   private async handleMemberEvent(kind: "welcome" | "farewell", event: MemberEventData) {

@@ -33,6 +33,7 @@ DISCORD_PUBLIC_KEY=
 OWNER_ID=
 STEAM_API_KEY=
 YOUTUBE_API_KEY=
+KLIPY_API_KEY=
 ```
 
 3. `bunx wrangler types` regenerates `worker-configuration.d.ts` after config changes
@@ -62,7 +63,7 @@ YOUTUBE_API_KEY=
 ## Commands
 
 - Info: `/ping`, `/info`, `/server`, `/activity`, `/stats` (owner only)
-- Mod: `/help`, `/clear`, `/welcome`, `/farewell`, `/counter`, `/mention`, `/language`, `/summary`, `/reactionrole`
+- Mod: `/help`, `/clear`, `/welcome`, `/farewell`, `/counter`, `/mention`, `/interfere`, `/language`, `/summary`, `/reactionrole`
 - Misc: `/color`, `/crypto`, `/distance`, `/weather`, `/steam`, `/steamgame`, `/ytinfo`
 
 ## Notes
@@ -70,7 +71,8 @@ YOUTUBE_API_KEY=
 - The privileged **Message Content Intent** must be enabled for `/summary`: without it, the Discord API returns empty `content` for channel history. The AI summaries run on Workers AI (`AI` binding) with `@cf/zai-org/glm-5.3-flash`.
 - `/summary manual` is available to every member; the other `/summary` subcommands require the **Manage Server** permission.
 - `/summary manual` and `/activity` are processed through Cloudflare Queues (`alwenobot_summary`): the deferred reply is patched as soon as the work is done, so long channel scans never hit the interaction timeout and never hold a request open. Both share the one queue and are told apart by the `kind` field on the message; a message without `kind` is treated as a summary. Automatic summaries are unchanged.
-- `/mention enable` lets the bot answer whoever tags it, in the voice of the summaries pitched to the message it is answering (same Workers AI model, one reply per tag). It is off by default and configured per server; `/mention show` shows the current state. The reply needs the gateway to receive `MESSAGE_CREATE`, which the Durable Object subscribes to through the (non-privileged) **Guild Messages** intent — nothing to enable in the portal. Intents are frozen when a gateway session identifies, so the first reconnect after this deploy identifies from scratch instead of resuming. To keep the AI usage bounded each user gets at most one reply every 60 seconds and each server 100 replies per day; further tags are ignored.
+- `/mention enable` lets the bot answer whoever tags it, in the voice of the summaries pitched to the message it is answering (same Workers AI model, one reply per tag). It is off by default and configured per server; `/mention show` shows the current state. The reply needs the gateway to receive `MESSAGE_CREATE`, which the Durable Object subscribes to through the (non-privileged) **Guild Messages** intent — nothing to enable in the portal. Intents are frozen when a gateway session identifies, so the first reconnect after this deploy identifies from scratch instead of resuming. To keep the AI usage bounded each user gets at most one reply every 60 seconds and each server 100 replies per day; further tags are ignored. A reply can also be a gif instead of text: when the model asks for one, the bot searches it on Klipy (the `KLIPY_API_KEY` secret) and posts the gif alone; when the search fails or finds nothing, the tag is left unanswered.
+- `/interfere enable` lets the bot read along and occasionally butt into a message nobody addressed to it. On every message it rolls the dice (about 1 in 4), stays quiet for 5 minutes in a channel after it has spoken, and each server gets at most 20 spontaneous replies per day; to decide it keeps the last 8 messages of the channel in memory, so the window is lost when the Durable Object restarts. Like tag replies it can answer with text or with a gif alone, and when it has nothing worth adding it stays silent. It is off by default and configured per server, independently from `/mention`; `/interfere show` shows the current state.
 - Automatic summaries start with `@here #summary` in the message content. The `@here` ping requires the **Mention @everyone, @here and all roles** permission (without it the mention is posted without notifying). Search `summary` (or `#summary`) to list past summaries.
 - The member counter channel rename is debounced (10 minutes) to stay well inside Discord rate limits.
 - Commands reply in the invoker's Discord client locale. Server-scoped texts — welcome, farewell and counter defaults, and the localized slash-command descriptions — follow the locale stored per guild, set with `/language`. AI-generated summaries and tag replies follow the language of the messages they answer.

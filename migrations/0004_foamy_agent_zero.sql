@@ -1,0 +1,1 @@
+ALTER TABLE `guild_settings` ADD `interfere_enabled` integer DEFAULT false NOT NULL;

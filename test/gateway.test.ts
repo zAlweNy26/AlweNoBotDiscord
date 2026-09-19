@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { checkMentionBudget, reconnectDelay, toHttpUrl } from "../src/gateway/GatewayDO"
+import { checkBudget, reconnectDelay, shouldInterfere, toHttpUrl } from "../src/gateway/GatewayDO"
 
 describe("toHttpUrl", () => {
   it("converts wss URLs to https", () => {
@@ -35,11 +35,11 @@ describe("reconnectDelay", () => {
   })
 })
 
-describe("checkMentionBudget", () => {
+describe("checkBudget", () => {
   const now = Date.UTC(2026, 0, 1, 12, 0, 0)
 
   it("allows the first mention of the day", () => {
-    expect(checkMentionBudget({ lastUsedAt: undefined, daily: undefined }, now)).toEqual({
+    expect(checkBudget({ lastUsedAt: undefined, daily: undefined }, now)).toEqual({
       allowed: true,
       date: "2026-01-01",
       count: 1,
@@ -47,21 +47,19 @@ describe("checkMentionBudget", () => {
   })
 
   it("blocks mentions inside the cooldown", () => {
-    expect(checkMentionBudget({ lastUsedAt: now - 30_000, daily: undefined }, now).allowed).toBe(false)
+    expect(checkBudget({ lastUsedAt: now - 30_000, daily: undefined }, now).allowed).toBe(false)
   })
 
   it("allows mentions once the cooldown is over", () => {
-    expect(checkMentionBudget({ lastUsedAt: now - 60_000, daily: undefined }, now).allowed).toBe(true)
+    expect(checkBudget({ lastUsedAt: now - 60_000, daily: undefined }, now).allowed).toBe(true)
   })
 
   it("blocks mentions when the daily limit is reached", () => {
-    expect(checkMentionBudget({ lastUsedAt: undefined, daily: { date: "2026-01-01", count: 100 } }, now).allowed).toBe(
-      false,
-    )
+    expect(checkBudget({ lastUsedAt: undefined, daily: { date: "2026-01-01", count: 100 } }, now).allowed).toBe(false)
   })
 
   it("resets the counter on a new day", () => {
-    expect(checkMentionBudget({ lastUsedAt: undefined, daily: { date: "2025-12-31", count: 100 } }, now)).toEqual({
+    expect(checkBudget({ lastUsedAt: undefined, daily: { date: "2025-12-31", count: 100 } }, now)).toEqual({
       allowed: true,
       date: "2026-01-01",
       count: 1,
@@ -69,6 +67,18 @@ describe("checkMentionBudget", () => {
   })
 
   it("counts the next mention of the day", () => {
-    expect(checkMentionBudget({ lastUsedAt: undefined, daily: { date: "2026-01-01", count: 4 } }, now).count).toBe(5)
+    expect(checkBudget({ lastUsedAt: undefined, daily: { date: "2026-01-01", count: 4 } }, now).count).toBe(5)
+  })
+})
+
+describe("shouldInterfere", () => {
+  it("stays quiet when the roll lands at or above the chance", () => {
+    expect(shouldInterfere(() => 1)).toBe(false)
+    expect(shouldInterfere(() => 0.25)).toBe(false)
+  })
+
+  it("chimes in when the roll lands below the chance", () => {
+    expect(shouldInterfere(() => 0)).toBe(true)
+    expect(shouldInterfere(() => 0.24)).toBe(true)
   })
 })

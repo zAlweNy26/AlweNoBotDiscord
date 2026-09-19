@@ -14,6 +14,7 @@ export interface GuildSettings {
   counterChannelId: string | null
   counterFormat: string | null
   mentionEnabled: boolean
+  interfereEnabled: boolean
   locale: string | null
 }
 

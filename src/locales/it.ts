@@ -173,6 +173,15 @@ export const it = {
       username: "Username",
       userNotFound: "Utente non trovato.",
     },
+    interfere: {
+      disabled: "🛑 Va bene, resto fuori dai piedi.",
+      enabled: "✅ Inizierò a intromettermi quando mi va.",
+      invalidSubcommand: "Sottocomando non valido.",
+      status: "Stato",
+      statusOff: "Disattivato 🛑",
+      statusOn: "Attivato ✅",
+      title: "⚙️ Configurazione risposte spontanee",
+    },
     language: {
       invalidSubcommand: "Sottocomando non valido.",
       status: "Lingua attuale",

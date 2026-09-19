@@ -12,6 +12,7 @@ const EXPECTED_COMMANDS = [
   "farewell",
   "help",
   "info",
+  "interfere",
   "language",
   "mention",
   "ping",

@@ -167,6 +167,15 @@ export const en = {
       username: "Username",
       userNotFound: "User not found.",
     },
+    interfere: {
+      disabled: "🛑 Fine, I'll stay out of it.",
+      enabled: "✅ I'll start butting in when I feel like it.",
+      invalidSubcommand: "Invalid subcommand.",
+      status: "Status",
+      statusOff: "Disabled 🛑",
+      statusOn: "Enabled ✅",
+      title: "⚙️ Spontaneous reply configuration",
+    },
     language: {
       invalidSubcommand: "Invalid subcommand.",
       status: "Current language",

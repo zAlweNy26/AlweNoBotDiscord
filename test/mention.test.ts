@@ -1,12 +1,7 @@
 import { type REST, Routes } from "discord.js"
 import { describe, expect, it, vi } from "vitest"
-import {
-  buildMentionRequest,
-  isMentionTrigger,
-  type MentionMessage,
-  pickRegister,
-  replyToMention,
-} from "../src/mention"
+import { buildMentionRequest, gifQuery, isMentionTrigger, type MentionMessage, replyToMention } from "../src/mention"
+import { pickRegister } from "../src/reply-prompts"
 
 const BOT_ID = "389455294025039872"
 
@@ -69,10 +64,11 @@ function toMessage(message: FakeMention): MentionMessage {
   } as unknown as MentionMessage
 }
 
-function createDeps(reply = "Domanda pessima, voto 2.") {
+function createDeps(reply = "Domanda pessima, voto 2.", gif: string | null = null) {
   const post = vi.fn(async () => ({}))
   const summarize = vi.fn(async () => reply)
-  return { deps: { rest: { post } as unknown as REST, summarize }, post, summarize }
+  const searchGif = vi.fn(async () => gif)
+  return { deps: { rest: { post } as unknown as REST, summarize, searchGif }, post, summarize, searchGif }
 }
 
 describe("isMentionTrigger", () => {
@@ -210,6 +206,28 @@ describe("pickRegister", () => {
   })
 })
 
+describe("gifQuery", () => {
+  it("reads the words out of the marker", () => {
+    expect(gifQuery("{{gif: cane che balla}}")).toBe("cane che balla")
+  })
+
+  it("reads the marker out of a longer answer", () => {
+    expect(gifQuery("ecco {{gif: gatto offeso}} fine")).toBe("gatto offeso")
+  })
+
+  it("trims the spaces around the words", () => {
+    expect(gifQuery("{{gif:   cane   }}")).toBe("cane")
+  })
+
+  it("ignores an empty query", () => {
+    expect(gifQuery("{{gif: }}")).toBeNull()
+  })
+
+  it("ignores an answer without a marker", () => {
+    expect(gifQuery("Domanda pessima, voto 2.")).toBeNull()
+  })
+})
+
 describe("replyToMention", () => {
   it("posts the answer as a reply to the tag", async () => {
     const { deps, post } = createDeps()
@@ -230,7 +248,8 @@ describe("replyToMention", () => {
     await replyToMention(deps, toMessage({ content: `<@${BOT_ID}> qual è il piano?`, nick: "Marco" }), BOT_ID)
 
     const [system, user] = summarize.mock.calls[0] as unknown as [string, string]
-    expect(system).toContain("tagged you")
+    expect(system).toContain("not a service")
+    expect(user).toContain("Somebody just tagged you")
     expect(user).toContain("Marco: qual è il piano?")
     expect(user).not.toContain(BOT_ID)
   })
@@ -279,5 +298,68 @@ describe("replyToMention", () => {
     const [, options] = post.mock.calls[0] as unknown as [string, { body: { content: string } }]
     expect(options.body.content.length).toBeLessThanOrEqual(800)
     expect(options.body.content.endsWith("…")).toBe(true)
+  })
+
+  it("tells the model how to ask for a gif", async () => {
+    const { deps, summarize } = createDeps()
+    await replyToMention(deps, toMessage({ content: `<@${BOT_ID}> ciao` }), BOT_ID)
+
+    const [system, user] = summarize.mock.calls[0] as unknown as [string, string]
+    expect(system).toContain("{{gif:")
+    expect(user).toContain("{{gif:")
+  })
+
+  it("answers with a gif when the model asks for one", async () => {
+    const { deps, post, searchGif } = createDeps("{{gif: cane che balla}}", "https://static.klipy.com/ii/abc/cane.gif")
+    await replyToMention(deps, toMessage({ content: `<@${BOT_ID}> ciao`, nick: "Marco" }), BOT_ID)
+
+    expect(searchGif).toHaveBeenCalledWith("cane che balla")
+    expect(post).toHaveBeenCalledTimes(1)
+    const [route, options] = post.mock.calls[0] as unknown as [
+      string,
+      { body: { content: string; message_reference: { message_id: string } } },
+    ]
+    expect(route).toBe(Routes.channelMessages("20"))
+    expect(options.body.content).toBe("https://static.klipy.com/ii/abc/cane.gif")
+    expect(options.body.message_reference.message_id).toBe("10")
+  })
+
+  it("sends nothing when the gif search finds nothing", async () => {
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {})
+    try {
+      const { deps, post } = createDeps("{{gif: niente al mondo}}")
+      await replyToMention(deps, toMessage({ content: `<@${BOT_ID}> ciao` }), BOT_ID)
+      expect(post).not.toHaveBeenCalled()
+    } finally {
+      errorSpy.mockRestore()
+    }
+  })
+
+  it("sends nothing when the gif search fails", async () => {
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {})
+    try {
+      const post = vi.fn(async () => ({}))
+      const summarize = vi.fn(async () => "{{gif: cane}}")
+      const searchGif = vi.fn(async () => {
+        throw new Error("klipy down")
+      })
+      await replyToMention(
+        { rest: { post } as unknown as REST, summarize, searchGif },
+        toMessage({ content: `<@${BOT_ID}> ciao` }),
+        BOT_ID,
+      )
+      expect(post).not.toHaveBeenCalled()
+    } finally {
+      errorSpy.mockRestore()
+    }
+  })
+
+  it("keeps the text when the marker is empty", async () => {
+    const { deps, post, searchGif } = createDeps("{{gif: }}")
+    await replyToMention(deps, toMessage({ content: `<@${BOT_ID}> ciao` }), BOT_ID)
+
+    expect(searchGif).not.toHaveBeenCalled()
+    const [, options] = post.mock.calls[0] as unknown as [string, { body: { content: string } }]
+    expect(options.body.content).toBe("{{gif: }}")
   })
 })
