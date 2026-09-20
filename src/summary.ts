@@ -261,28 +261,17 @@ export function createSummarizer(ai: Env["AI"]) {
   }
 }
 
-export function pickNemesis(messages: TranscriptMessage[], random: () => number = Math.random) {
-  const names = [...new Set(messages.map((message) => message.authorName))]
-  if (names.length === 0) {
-    return undefined
-  }
-  return names[Math.min(Math.floor(random() * names.length), names.length - 1)]
-}
-
 export async function summarizeWindow(
   summarize: SummaryDeps["summarize"],
   messages: TranscriptMessage[],
   prompts: SummaryPrompts = SUMMARY_PROMPTS,
-  random: () => number = Math.random,
 ) {
   const chunks = chunkTranscript(
     messages.map((message) => `[${formatTime(message.timestamp, "en")}] ${message.authorName}: ${message.content}`),
   )
-  const nemesis = pickNemesis(messages, random)
-  const closing = nemesis ? `${prompts.reminder}\n${prompts.nemesis(nemesis)}` : prompts.reminder
   const single = chunks[0]
   if (chunks.length === 1 && single) {
-    return summarize(prompts.single, `${single.join("\n")}\n${closing}`)
+    return summarize(prompts.single, `${single.join("\n")}\n${prompts.reminder}`)
   }
 
   const partials: string[] = []
@@ -290,7 +279,7 @@ export async function summarizeWindow(
     partials.push(await summarize(prompts.chunk, `${chunk.join("\n")}\n${prompts.reminder}`))
   }
   const merged = partials.map((partial, index) => `${prompts.part} ${index + 1}:\n${partial}`).join("\n\n")
-  return summarize(prompts.merge, `${merged}\n${closing}`)
+  return summarize(prompts.merge, `${merged}\n${prompts.reminder}`)
 }
 
 function statusOf(error: unknown) {

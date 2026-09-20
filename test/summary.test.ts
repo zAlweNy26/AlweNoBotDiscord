@@ -14,7 +14,6 @@ import {
   fetchRecentHumans,
   getSummaryStatus,
   type ManualSummaryDeps,
-  pickNemesis,
   runManualSummary,
   runSummaryPoll,
   type SummaryDeps,
@@ -143,17 +142,31 @@ describe("SUMMARY_PROMPTS", () => {
       expect(prompt).toContain("900 characters")
       expect(prompt).toContain("opening line")
       expect(prompt).toContain("two or three beats")
-      expect(prompt).toContain("The last beat is the last line")
+      expect(prompt).toContain("the cliffhanger closer")
+      expect(prompt).toContain("closer included")
       expect(prompt).toContain("No headings, no bullets")
       expect(prompt).not.toContain("TL;DR")
     }
   })
 
-  it("ends on the last beat, with no closing verdict", () => {
+  it("opens with the sitcom recap formula in the language of the transcript", () => {
+    for (const prompt of embedPrompts) {
+      expect(prompt).toContain('"Previously on..."')
+      expect(prompt).toContain("Negli episodi precedenti")
+      expect(prompt).toContain("No episode number")
+      expect(prompt).toContain("language of the transcript")
+    }
+  })
+
+  it("closes on the cliffhanger and the ad break, not a verdict", () => {
     for (const prompt of embedPrompts) {
       expect(prompt).not.toMatch(/verdict/i)
-      expect(prompt).toContain("No wrap-up")
-      expect(prompt).toContain("the material runs out and you stop")
+      expect(prompt).toContain("the question the next episode will answer")
+      expect(prompt).toContain("We'll find out next time")
+      expect(prompt).toContain("Lo scopriremo nelle prossime puntate")
+      expect(prompt).toContain("We'll be right back")
+      expect(prompt).toContain("Pubblicità")
+      expect(prompt).toContain("never a thread that is not there")
     }
   })
 
@@ -201,7 +214,6 @@ describe("SUMMARY_PROMPTS", () => {
       expect(prompt).toContain("That is not material")
       expect(prompt).toContain("never hand it the crown")
       expect(prompt).toContain("Being vile is not an achievement")
-      expect(prompt).toContain("never on the worst")
     }
   })
 
@@ -209,7 +221,7 @@ describe("SUMMARY_PROMPTS", () => {
     for (const prompt of embedPrompts) {
       expect(prompt).toContain("never with the name of what you are")
       expect(prompt).toContain('"riassunto", "recap", "summary"')
-      expect(prompt).toContain("The first sentence is already the story")
+      expect(prompt).toContain("the first sentence is already the story")
     }
   })
 
@@ -234,9 +246,10 @@ describe("SUMMARY_PROMPTS", () => {
     }
   })
 
-  it("writes the narrator into the story on the prompts that fill the embed", () => {
+  it("casts the voice as the sitcom's narrator, not a character in it", () => {
     for (const prompt of embedPrompts) {
-      expect(prompt).toContain("You are a character in this server, not a camera")
+      expect(prompt).toContain("You are the narrator of this server's sitcom")
+      expect(prompt).not.toContain("You are a character in this server")
       expect(prompt).not.toContain("Never refer to yourself")
     }
   })
@@ -274,29 +287,8 @@ describe("SUMMARY_PROMPTS", () => {
     }
   })
 
-  it("hands the narrator a nemesis to prosecute and keeps the charge invented", () => {
-    for (const prompt of embedPrompts) {
-      expect(prompt).toContain("NEMESIS - one per summary")
-      expect(prompt).toContain("you are prosecuting them")
-      expect(prompt).toContain("The line is real, the indictment is theatre")
-      expect(prompt).toContain("Run the case through the beats")
-      expect(prompt).toContain("no sentence, no summing-up")
-      expect(prompt).toContain("Never a real accusation")
-      expect(prompt).toContain("nothing that would")
-      expect(prompt).toContain("still be an insult if it turned out to be true")
-    }
-  })
-
-  it("names the nemesis after the text, where the transcript cannot bury it", () => {
-    expect(SUMMARY_PROMPTS.nemesis("Titan")).toContain("Titan")
-    expect(SUMMARY_PROMPTS.nemesis("Titan")).toContain("something they really typed")
-    expect(SUMMARY_PROMPTS.nemesis("Titan")).toContain("It never closes")
-    expect(SUMMARY_PROMPTS.nemesis("Titan")).not.toContain("sentence them at the end")
-    expect(SUMMARY_PROMPTS.chunk).not.toContain("nemesis")
-  })
-
-  it("keeps the chronicler voice out of the neutral chunk pass", () => {
-    expect(SUMMARY_PROMPTS.chunk).not.toContain("in-house chronicler")
+  it("keeps the sitcom narrator out of the neutral chunk pass", () => {
+    expect(SUMMARY_PROMPTS.chunk).not.toContain("narrator of this server's sitcom")
     expect(SUMMARY_PROMPTS.chunk).toContain("Preserve the memorable lines as they were written")
     expect(SUMMARY_PROMPTS.chunk).toContain("Open every point with the nickname of whoever typed it")
     expect(SUMMARY_PROMPTS.merge).toContain("kept word for word are there so you know what was really said")
@@ -313,62 +305,37 @@ function transcript(authorName: string, index: number, content = "ciao"): Transc
   }
 }
 
-describe("pickNemesis", () => {
-  const window = ["Roby", "Claudia", "Roby", "Ago"].map((author, index) => transcript(author, index))
-
-  it("draws the authors of the window and nobody else", () => {
-    const drawn = new Set(Array.from({ length: 30 }, (_, step) => pickNemesis(window, () => step / 30)))
-
-    expect(drawn).toEqual(new Set(["Roby", "Claudia", "Ago"]))
-  })
-
-  it("counts a repeated author once instead of stacking the draw towards them", () => {
-    expect(pickNemesis(window, () => 0)).toBe("Roby")
-    expect(pickNemesis(window, () => 0.34)).toBe("Claudia")
-    expect(pickNemesis(window, () => 0.67)).toBe("Ago")
-  })
-
-  it("never falls off the end of the list", () => {
-    expect(pickNemesis(window, () => 0.999999)).toBe("Ago")
-    expect(pickNemesis(window, () => 1)).toBe("Ago")
-  })
-
-  it("has nobody to prosecute in an empty window", () => {
-    expect(pickNemesis([], () => 0)).toBeUndefined()
-  })
-})
-
 describe("summarizeWindow", () => {
-  it("names the nemesis last, after the language reminder", async () => {
+  it("puts the language reminder after the transcript on the single pass", async () => {
     const summarize = createSummarize()
 
     await summarizeWindow(
       summarize,
       ["Roby", "Claudia"].map((author, index) => transcript(author, index)),
       SUMMARY_PROMPTS,
-      () => 0.6,
     )
 
     const call = summarize.mock.calls[0]
     expect(call?.[0]).toBe(SUMMARY_PROMPTS.single)
     expect(call?.[1]).toContain(SUMMARY_PROMPTS.reminder)
-    expect(call?.[1].endsWith(SUMMARY_PROMPTS.nemesis("Claudia"))).toBe(true)
+    expect(call?.[1].endsWith(SUMMARY_PROMPTS.reminder)).toBe(true)
   })
 
-  it("keeps the nemesis out of the neutral chunk pass and hands it to the merge", async () => {
+  it("keeps the language reminder on the neutral chunk pass too", async () => {
     const summarize = createSummarize()
     const long = ["Roby", "Claudia"].map((author, index) => transcript(author, index, "x".repeat(60_000)))
 
-    await summarizeWindow(summarize, long, SUMMARY_PROMPTS, () => 0)
+    await summarizeWindow(summarize, long, SUMMARY_PROMPTS)
 
     expect(summarize.mock.calls).toHaveLength(3)
     for (const [system, user] of summarize.mock.calls.slice(0, 2)) {
       expect(system).toBe(SUMMARY_PROMPTS.chunk)
-      expect(user).not.toContain("nemesis")
+      expect(user).toContain(SUMMARY_PROMPTS.reminder)
     }
     const merge = summarize.mock.calls[2]
     expect(merge?.[0]).toBe(SUMMARY_PROMPTS.merge)
-    expect(merge?.[1]).toContain(SUMMARY_PROMPTS.nemesis("Roby"))
+    expect(merge?.[1]).toContain("Part 1:")
+    expect(merge?.[1].endsWith(SUMMARY_PROMPTS.reminder)).toBe(true)
   })
 })
 
