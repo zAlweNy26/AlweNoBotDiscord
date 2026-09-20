@@ -156,4 +156,13 @@ describe("replyToInterfere", () => {
       errorSpy.mockRestore()
     }
   })
+
+  it("stays silent when the message carries no words", async () => {
+    const { deps, post, summarize } = createDeps()
+    const posted = await replyToInterfere(deps, toMessage("🎉 <@10>"), [])
+
+    expect(posted).toBe(false)
+    expect(summarize).not.toHaveBeenCalled()
+    expect(post).not.toHaveBeenCalled()
+  })
 })

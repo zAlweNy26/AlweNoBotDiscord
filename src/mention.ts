@@ -7,10 +7,16 @@ const USER_MENTION = /<@!?(\d+)>/g
 const LINK = /https?:\/\/\S+/g
 const GIF_HOSTS = ["tenor.com", "giphy.com"]
 const GIF_MARKER = /\{\{gif:\s*([^{}]+?)\s*\}\}/i
+const DISCORD_TOKEN = /<[^>]*>/g
+const LETTER = /\p{L}/u
 
 export function gifQuery(text: string) {
   const match = GIF_MARKER.exec(text)
   return match?.[1]?.trim() || null
+}
+
+export function hasWords(content: string) {
+  return LETTER.test(content.replace(DISCORD_TOKEN, ""))
 }
 
 export interface MentionDeps {
@@ -149,7 +155,10 @@ export async function deliverReply(deps: MentionDeps, message: MentionMessage, r
 }
 
 export async function replyToMention(deps: MentionDeps, message: MentionMessage, botId: string) {
+  if (!hasWords(message.content)) {
+    return false
+  }
   const request = `${buildMentionRequest(message, botId)}\n${mentionReminder(pickRegister(), localTime(message.timestamp))}`
   const reply = await deps.summarize(REPLY_PERSONA, request)
-  await deliverReply(deps, message, reply, MENTION_LIMIT)
+  return deliverReply(deps, message, reply, MENTION_LIMIT)
 }

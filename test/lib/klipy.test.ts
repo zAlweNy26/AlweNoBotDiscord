@@ -11,6 +11,13 @@ function gifResponse(url: string) {
   return Response.json({ result: true, data: { data: [{ file: { md: { gif: { url } } } }] } })
 }
 
+function gifResults(entries: Array<{ url?: string }>) {
+  return Response.json({
+    result: true,
+    data: { data: entries.map((entry) => ({ file: { md: { gif: { url: entry.url } } } })) },
+  })
+}
+
 afterEach(() => {
   vi.unstubAllGlobals()
 })
@@ -39,13 +46,28 @@ describe("searchGif", () => {
     await expect(searchGif("key-123", "niente")).resolves.toBeNull()
   })
 
-  it("returns null when the first result carries no md gif", async () => {
+  it("picks one of the results at random", async () => {
     stubFetch(async () =>
-      Response.json({
-        result: true,
-        data: { data: [{ file: { sm: { gif: { url: "https://static.klipy.com/x.gif" } } } }] },
-      }),
+      gifResults([
+        { url: "https://static.klipy.com/a.gif" },
+        { url: "https://static.klipy.com/b.gif" },
+        { url: "https://static.klipy.com/c.gif" },
+      ]),
     )
+
+    await expect(searchGif("key-123", "cane", () => 0)).resolves.toBe("https://static.klipy.com/a.gif")
+    await expect(searchGif("key-123", "cane", () => 0.5)).resolves.toBe("https://static.klipy.com/b.gif")
+    await expect(searchGif("key-123", "cane", () => 0.99)).resolves.toBe("https://static.klipy.com/c.gif")
+  })
+
+  it("skips results without a usable md gif when picking", async () => {
+    stubFetch(async () => gifResults([{}, { url: "https://static.klipy.com/b.gif" }]))
+
+    await expect(searchGif("key-123", "cane", () => 0)).resolves.toBe("https://static.klipy.com/b.gif")
+  })
+
+  it("returns null when no result carries an md gif", async () => {
+    stubFetch(async () => gifResults([{}, {}]))
     await expect(searchGif("key-123", "cane")).resolves.toBeNull()
   })
 

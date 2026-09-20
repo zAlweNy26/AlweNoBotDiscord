@@ -1,4 +1,4 @@
-import { deliverReply, type MentionDeps, type MentionMessage } from "./mention"
+import { deliverReply, hasWords, type MentionDeps, type MentionMessage } from "./mention"
 import { interfereReminder, localTime, pickRegister, REPLY_PERSONA } from "./reply-prompts"
 
 export const INTERFERE_LIMIT = 400
@@ -15,6 +15,9 @@ export function appendLine(transcript: string[], line: string) {
 }
 
 export async function replyToInterfere(deps: MentionDeps, message: MentionMessage, transcript: string[]) {
+  if (!hasWords(message.content)) {
+    return false
+  }
   const request = `${transcript.join("\n")}\n${interfereReminder(pickRegister(), localTime(message.timestamp))}`
   const reply = await deps.summarize(REPLY_PERSONA, request)
   if (isIgnoreMarker(reply)) {

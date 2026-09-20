@@ -19,7 +19,7 @@ interface KlipySearchResult {
   }
 }
 
-export async function searchGif(apiKey: string, query: string) {
+export async function searchGif(apiKey: string, query: string, random: () => number = Math.random) {
   const params = new URLSearchParams({
     q: query,
     per_page: PER_PAGE,
@@ -27,5 +27,10 @@ export async function searchGif(apiKey: string, query: string) {
     format_filter: "gif",
   })
   const body = await fetchJson<KlipySearchResult>(`${KLIPY_BASE}/${encodeURIComponent(apiKey)}/gifs/search?${params}`)
-  return body.data?.data?.[0]?.file?.md?.gif?.url ?? null
+  const urls = (body.data?.data ?? []).flatMap((result) => {
+    const url = result.file?.md?.gif?.url
+    return url ? [url] : []
+  })
+  const index = Math.min(Math.floor(random() * urls.length), urls.length - 1)
+  return urls[index] ?? null
 }

@@ -1,6 +1,13 @@
 import { type REST, Routes } from "discord.js"
 import { describe, expect, it, vi } from "vitest"
-import { buildMentionRequest, gifQuery, isMentionTrigger, type MentionMessage, replyToMention } from "../src/mention"
+import {
+  buildMentionRequest,
+  gifQuery,
+  hasWords,
+  isMentionTrigger,
+  type MentionMessage,
+  replyToMention,
+} from "../src/mention"
 import { pickRegister } from "../src/reply-prompts"
 
 const BOT_ID = "389455294025039872"
@@ -228,6 +235,28 @@ describe("gifQuery", () => {
   })
 })
 
+describe("hasWords", () => {
+  it("accepts a message that says something", () => {
+    expect(hasWords("che si fa stasera?")).toBe(true)
+  })
+
+  it("accepts words next to a tag", () => {
+    expect(hasWords(`<@${BOT_ID}> guarda`)).toBe(true)
+  })
+
+  it("rejects a bare tag", () => {
+    expect(hasWords(`<@${BOT_ID}>`)).toBe(false)
+  })
+
+  it("rejects tags, emoji and timestamps", () => {
+    expect(hasWords(`<@${BOT_ID}> <:party:123456789> <t:1700000000:F>`)).toBe(false)
+  })
+
+  it("rejects emoji and punctuation", () => {
+    expect(hasWords("🎉🎉 !!!")).toBe(false)
+  })
+})
+
 describe("replyToMention", () => {
   it("posts the answer as a reply to the tag", async () => {
     const { deps, post } = createDeps()
@@ -361,5 +390,13 @@ describe("replyToMention", () => {
     expect(searchGif).not.toHaveBeenCalled()
     const [, options] = post.mock.calls[0] as unknown as [string, { body: { content: string } }]
     expect(options.body.content).toBe("{{gif: }}")
+  })
+
+  it("stays silent when the tag carries no words", async () => {
+    const { deps, post, summarize } = createDeps()
+    await replyToMention(deps, toMessage({ content: `<@${BOT_ID}>`, nick: "Marco" }), BOT_ID)
+
+    expect(summarize).not.toHaveBeenCalled()
+    expect(post).not.toHaveBeenCalled()
   })
 })
