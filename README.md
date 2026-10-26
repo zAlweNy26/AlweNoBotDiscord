@@ -56,7 +56,7 @@ KLIPY_API_KEY=
 6. In the Discord Developer Portal:
    - set the Interactions Endpoint URL to `https://<worker>.<subdomain>.workers.dev/interactions`
    - enable the **Server Members Intent** (required for welcome/farewell/counter)
-   - enable the **Message Content Intent** (required for `/summary`)
+   - enable the **Message Content Intent** (required for `/summary` and `/interfere`)
 
 `bun run register` remains available to refresh the Discord-side command definitions without deploying (for example description-only changes). Set `DISCORD_GUILD_ID` in `.dev.vars` to register the commands in a single development server instead, where updates appear instantly; remove it to go back to global registration.
 
@@ -74,6 +74,6 @@ KLIPY_API_KEY=
 - `/mention enable` lets the bot answer whoever tags it, in the voice of the summaries pitched to the message it is answering (same Workers AI model, one reply per tag). It is off by default and configured per server; `/mention show` shows the current state. The reply needs the gateway to receive `MESSAGE_CREATE`, which the Durable Object subscribes to through the (non-privileged) **Guild Messages** intent — nothing to enable in the portal. Intents are frozen when a gateway session identifies, so the first reconnect after this deploy identifies from scratch instead of resuming. To keep the AI usage bounded each user gets at most one reply every 60 seconds and each server 100 replies per day; further tags are ignored. A reply can also be a gif instead of text: when the model asks for one, the bot searches it on Klipy (the `KLIPY_API_KEY` secret) and posts the gif alone; when the search fails or finds nothing, the tag is left unanswered.
 - `/interfere enable` lets the bot read along and occasionally butt into a message nobody addressed to it. On every message it rolls the dice (about 1 in 4), stays quiet for 5 minutes in a channel after it has spoken, and each server gets at most 20 spontaneous replies per day; to decide it keeps the last 8 messages of the channel in memory, so the window is lost when the Durable Object restarts. Like tag replies it can answer with text or with a gif alone, and when it has nothing worth adding it stays silent. It is off by default and configured per server, independently from `/mention`; `/interfere show` shows the current state.
 - Automatic summaries start with `@here #summary` in the message content. The `@here` ping requires the **Mention @everyone, @here and all roles** permission (without it the mention is posted without notifying). Search `summary` (or `#summary`) to list past summaries.
-- The member counter channel rename is debounced (10 minutes) to stay well inside Discord rate limits.
+- The member counter channel rename is debounced (10 minutes) to stay well inside Discord rate limits; joins inside the window are applied on the first heartbeat after it.
 - Commands reply in the invoker's Discord client locale. Server-scoped texts — welcome, farewell and counter defaults, and the localized slash-command descriptions — follow the locale stored per guild, set with `/language`. AI-generated summaries and tag replies follow the language of the messages they answer.
 - Legacy `steam_countries.min.json` was replaced by `Intl.DisplayNames` (`src/lib/countries.ts`); the counter format supports `{{membri}}`.

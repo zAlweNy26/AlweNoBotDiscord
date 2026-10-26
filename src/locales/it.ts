@@ -91,6 +91,7 @@ export const it = {
       channel: "Canale",
       entry: "{{rank}} <@{{authorId}}> — **{{messages}}** messaggi · {{share}}% · {{average}} caratteri/msg",
       footer: "Ultimi {{days}} giorni · solo testo, bot esclusi",
+      noAccess: "Non puoi leggere la cronologia di <#{{channelId}}>.",
       noMessages: "Nessun messaggio in <#{{channelId}}> negli ultimi {{days}} giorni.",
       participants: "Partecipanti",
       queueError: "Non riesco ad avviare l'analisi. Riprova più tardi.",

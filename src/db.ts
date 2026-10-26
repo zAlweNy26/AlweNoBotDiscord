@@ -38,15 +38,14 @@ export async function ensureGuildSettings(db: D1Database, guildId: string) {
 }
 
 export async function updateGuildSettings(db: D1Database, guildId: string, patch: GuildSettingsPatch) {
-  const values: Record<string, string | boolean | null> = {}
-  for (const [field, value] of Object.entries(patch)) {
-    if (value !== undefined) {
-      values[field] = value
-    }
-  }
+  const values: GuildSettingsPatch = Object.fromEntries(
+    Object.entries(patch).filter(([, value]) => value !== undefined),
+  )
   if (Object.keys(values).length === 0) return
-  await ensureGuildSettings(db, guildId)
-  await orm(db).update(guildSettings).set(values).where(eq(guildSettings.guildId, guildId))
+  await orm(db)
+    .insert(guildSettings)
+    .values({ guildId, ...values })
+    .onConflictDoUpdate({ target: guildSettings.guildId, set: values })
 }
 
 export interface SummaryChannel {

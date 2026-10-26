@@ -733,6 +733,46 @@ describe("runSummaryPoll", () => {
     expect(posted).toHaveLength(1)
     expect(summarize).toHaveBeenCalledTimes(3)
   })
+
+  it("moves past a scan budget full of bots", async () => {
+    await addSummaryChannel(env.DB, "guild", "channel", 10, "0")
+    const messages: FakeMessage[] = Array.from({ length: 2_100 }, (_, index) => ({
+      id: String(1_000 + index),
+      content: "beep",
+      bot: true,
+    }))
+    const { rest, posted } = createRest(messages)
+    const result = await runSummaryPoll(env as unknown as Env, deps(rest, createSummarize()))
+
+    expect(posted).toHaveLength(0)
+    expect(result.idle).toEqual([])
+    expect((await getSummaryChannel(env.DB, "guild", "channel"))?.lastMessageId).toBe("2999")
+  })
+
+  it("summarizes the few humans in a full scan budget", async () => {
+    await addSummaryChannel(env.DB, "guild", "channel", 10, "0")
+    const messages: FakeMessage[] = Array.from({ length: 2_100 }, (_, index) => ({
+      id: String(1_000 + index),
+      content: index % 1_000 === 0 ? "human" : "beep",
+      bot: index % 1_000 !== 0,
+    }))
+    const { rest, posted } = createRest(messages)
+    await runSummaryPoll(env as unknown as Env, deps(rest, createSummarize()))
+
+    expect(posted).toHaveLength(1)
+    expect((await getSummaryChannel(env.DB, "guild", "channel"))?.lastMessageId).toBe("2000")
+  })
+
+  it("reports channels waiting for messages and skips them next time", async () => {
+    await addSummaryChannel(env.DB, "guild", "channel", 2, "0")
+    const { rest } = createRest([{ id: "100", content: "hello" }])
+    const first = await runSummaryPoll(env as unknown as Env, deps(rest, createSummarize()))
+    expect(first.idle).toEqual(["channel"])
+
+    const calls = vi.mocked(rest.get).mock.calls.length
+    await runSummaryPoll(env as unknown as Env, deps(rest, createSummarize()), new Set(first.idle))
+    expect(vi.mocked(rest.get).mock.calls.length).toBe(calls)
+  })
 })
 
 describe("getSummaryStatus", () => {
@@ -829,6 +869,7 @@ describe("deliverManualSummary", () => {
     const manualDeps = deliveryDeps([{ id: "1", content: "first" }], patch)
 
     await deliverManualSummary(manualDeps, {
+      kind: "summary",
       guildId: "guild",
       channelId: "channel",
       needed: 10,
@@ -848,6 +889,7 @@ describe("deliverManualSummary", () => {
 
     await expect(
       deliverManualSummary(manualDeps, {
+        kind: "summary",
         guildId: "guild",
         channelId: "channel",
         needed: 10,

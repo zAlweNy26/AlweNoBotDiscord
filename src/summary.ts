@@ -41,6 +41,7 @@ interface FetchResult {
   humans: TranscriptMessage[]
   scanned: number
   exhausted: boolean
+  cursor: string
 }
 
 export function isHumanMessage(message: APIMessage) {
@@ -99,7 +100,13 @@ function formatTime(timestamp: string, locale: Locale) {
   }).format(new Date(timestamp))
 }
 
-async function fetchHumans(rest: REST, channelId: string, afterId: string, needed: number, budget: number) {
+async function fetchHumans(
+  rest: REST,
+  channelId: string,
+  afterId: string,
+  needed: number,
+  budget: number,
+): Promise<FetchResult> {
   const humans: TranscriptMessage[] = []
   let cursor = afterId
   let scanned = 0
@@ -131,7 +138,7 @@ async function fetchHumans(rest: REST, channelId: string, afterId: string, neede
   }
 
   humans.sort((a, b) => (BigInt(a.id) < BigInt(b.id) ? -1 : 1))
-  return { humans, scanned, exhausted }
+  return { humans, scanned, exhausted, cursor }
 }
 
 export async function getSummaryStatus(rest: REST, channel: SummaryChannel) {
@@ -292,31 +299,22 @@ function statusOf(error: unknown) {
   return undefined
 }
 
-async function handleRestError(env: Env, channel: SummaryChannel, error: unknown) {
+async function handleAccessError(env: Env, channel: SummaryChannel, error: unknown) {
   const status = statusOf(error)
   if (status === 404) {
     console.warn(`Channel ${channel.channelId} is gone, removing its summary config`)
     await removeSummaryChannel(env.DB, channel.guildId, channel.channelId)
-    return
+    return true
   }
   if (status === 403) {
     console.warn(`Missing access to channel ${channel.channelId}, keeping its summary config`)
-    return
+    return true
   }
-  console.error(`Failed to fetch messages for channel ${channel.channelId}`, error)
+  return false
 }
 
 async function handlePostFailure(env: Env, channel: SummaryChannel, lastMessageId: string, error: unknown) {
-  const status = statusOf(error)
-  if (status === 404) {
-    console.warn(`Channel ${channel.channelId} is gone, removing its summary config`)
-    await removeSummaryChannel(env.DB, channel.guildId, channel.channelId)
-    return
-  }
-  if (status === 403) {
-    console.warn(`Missing access to channel ${channel.channelId}, keeping its summary config`)
-    return
-  }
+  if (await handleAccessError(env, channel, error)) return
 
   const failures = channel.failureCount + 1
   if (failures >= MAX_FAILURES) {
@@ -428,7 +426,7 @@ async function processChannel(env: Env, deps: SummaryDeps, channel: SummaryChann
   while (posted < MAX_WINDOWS_PER_POLL) {
     if (buffer.length < channel.threshold) {
       if (exhausted) {
-        return posted
+        return { posted, idle: true }
       }
       let result: FetchResult
       try {
@@ -440,14 +438,26 @@ async function processChannel(env: Env, deps: SummaryDeps, channel: SummaryChann
           SCAN_LIMIT - scanned,
         )
       } catch (error) {
-        await handleRestError(env, channel, error)
-        return posted
+        if (!(await handleAccessError(env, channel, error))) {
+          console.error(`Failed to fetch messages for channel ${channel.channelId}`, error)
+        }
+        return { posted, idle: false }
       }
       scanned += result.scanned
       buffer.push(...result.humans)
       exhausted = result.exhausted
       if (buffer.length < channel.threshold) {
-        return posted
+        if (exhausted) {
+          return { posted, idle: true }
+        }
+        // A full scan budget with too few humans would otherwise pin the cursor forever.
+        if (posted > 0) {
+          return { posted, idle: false }
+        }
+        if (buffer.length === 0) {
+          await updateSummaryProgress(env.DB, channel.guildId, channel.channelId, { lastMessageId: result.cursor })
+          return { posted, idle: false }
+        }
       }
     }
 
@@ -459,7 +469,7 @@ async function processChannel(env: Env, deps: SummaryDeps, channel: SummaryChann
     )
     const lastMessage = windowMessages[windowMessages.length - 1]
     if (!lastMessage) {
-      return posted
+      return { posted, idle: false }
     }
 
     let summary: string
@@ -467,7 +477,7 @@ async function processChannel(env: Env, deps: SummaryDeps, channel: SummaryChann
       summary = await summarizeWindow(deps.summarize, windowMessages)
     } catch (error) {
       await handleAiFailure(env, channel, lastMessage.id, classifyAiFailure(error), error)
-      return posted
+      return { posted, idle: false }
     }
 
     const settings = await getGuildSettings(env.DB, channel.guildId)
@@ -483,7 +493,7 @@ async function processChannel(env: Env, deps: SummaryDeps, channel: SummaryChann
       })
     } catch (error) {
       await handlePostFailure(env, channel, lastMessage.id, error)
-      return posted
+      return { posted, idle: false }
     }
 
     await updateSummaryProgress(env.DB, channel.guildId, channel.channelId, {
@@ -495,25 +505,28 @@ async function processChannel(env: Env, deps: SummaryDeps, channel: SummaryChann
     posted += 1
   }
 
-  return posted
+  return { posted, idle: false }
 }
 
-export async function runSummaryPoll(env: Env, deps: SummaryDeps) {
+export async function runSummaryPoll(env: Env, deps: SummaryDeps, skip: ReadonlySet<string> = new Set()) {
   const channels = await listSummaryChannels(env.DB)
   let processed = 0
+  const idle: string[] = []
   for (const channel of channels) {
+    if (skip.has(channel.channelId)) continue
     try {
-      processed += await processChannel(env, deps, channel)
+      const result = await processChannel(env, deps, channel)
+      processed += result.posted
+      if (result.idle) idle.push(channel.channelId)
     } catch (error) {
       console.error(`Summary poll failed for channel ${channel.channelId}`, error)
     }
   }
-  return { channels: channels.length, processed }
+  return { channels: channels.length, processed, idle }
 }
 
 export interface ManualSummaryMessage {
-  // Optional so messages already queued by an older deploy still route to this handler.
-  kind?: "summary"
+  kind: "summary"
   guildId: string
   channelId: string
   needed: number

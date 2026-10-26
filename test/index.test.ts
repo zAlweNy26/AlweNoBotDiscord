@@ -33,7 +33,9 @@ function createDeps(options: { patchFails?: boolean } = {}): ManualSummaryDeps {
   return { rest, summarize: vi.fn(async () => "riassunto"), applicationId: "app" }
 }
 
-function createBatch(body: QueuedJob = { guildId: "guild", channelId: "channel", needed: 10, token: "token" }) {
+function createBatch(
+  body: QueuedJob = { kind: "summary", guildId: "guild", channelId: "channel", needed: 10, token: "token" },
+) {
   return createMessageBatch<QueuedJob>("alwenobot-summary", [
     { id: "message-1", timestamp: new Date(0), attempts: 1, body },
   ])

@@ -3,7 +3,7 @@ import { getGuildSettings } from "../db"
 import { appendLine, replyToInterfere } from "../interfere"
 import { createTranslator } from "../lib/i18n"
 import { searchGif } from "../lib/klipy"
-import { isMentionTrigger, type MentionMessage, messageLine, replyToMention } from "../mention"
+import { hasWords, isMentionTrigger, type MentionMessage, messageLine, replyToMention } from "../mention"
 import { createSummarizer, runSummaryPoll } from "../summary"
 import { fillMessage } from "./messages"
 
@@ -12,7 +12,9 @@ const GATEWAY_URL = "wss://gateway.discord.gg"
 const INTENTS_GUILDS = 1
 const INTENTS_GUILD_MEMBERS = 2
 const INTENTS_GUILD_MESSAGES = 1 << 9
-const INTENTS = INTENTS_GUILDS | INTENTS_GUILD_MEMBERS | INTENTS_GUILD_MESSAGES
+// The portal toggle only unlocks REST reads; gateway payloads stay empty unless IDENTIFY asks too.
+const INTENTS_MESSAGE_CONTENT = 1 << 15
+export const INTENTS = INTENTS_GUILDS | INTENTS_GUILD_MEMBERS | INTENTS_GUILD_MESSAGES | INTENTS_MESSAGE_CONTENT
 
 const OP_DISPATCH = 0
 const OP_HEARTBEAT = 1
@@ -68,6 +70,14 @@ export function shouldInterfere(random: () => number = Math.random) {
   return random() < INTERFERE_CHANCE
 }
 
+export function shouldResume(session: {
+  sessionId: string | null
+  sequence: number | null
+  sessionIntents: number | null
+}) {
+  return session.sessionId !== null && session.sequence !== null && session.sessionIntents === INTENTS
+}
+
 interface GatewayMessage {
   op: number
   s?: number | null
@@ -92,6 +102,9 @@ export class GatewayDO {
   private awaitingAck = false
   private summaryPollRunning = false
   private readonly transcript = new Map<string, string[]>()
+  private readonly pendingCounters = new Map<string, string>()
+  private readonly idleSummaryChannels = new Set<string>()
+  private readonly activeDuringPoll = new Set<string>()
   private readonly rest: REST
 
   constructor(
@@ -112,13 +125,17 @@ export class GatewayDO {
         return Response.json({ skipped: true })
       }
       this.summaryPollRunning = true
+      this.activeDuringPoll.clear()
       try {
-        return Response.json(
-          await runSummaryPoll(this.env, {
-            rest: this.rest,
-            summarize: createSummarizer(this.env.AI),
-          }),
+        const result = await runSummaryPoll(
+          this.env,
+          { rest: this.rest, summarize: createSummarizer(this.env.AI) },
+          this.idleSummaryChannels,
         )
+        for (const channelId of result.idle) {
+          if (!this.activeDuringPoll.has(channelId)) this.idleSummaryChannels.add(channelId)
+        }
+        return Response.json(result)
       } finally {
         this.summaryPollRunning = false
       }
@@ -134,7 +151,9 @@ export class GatewayDO {
     if (this.isOpen()) {
       this.awaitingAck = true
       this.send({ op: OP_HEARTBEAT, d: this.sequence })
+      await this.state.storage.put("sequence", this.sequence)
       await this.scheduleAlarm(this.heartbeatInterval)
+      await this.flushPendingCounters()
       return
     }
     await this.ensureConnected()
@@ -226,7 +245,7 @@ export class GatewayDO {
   private async startConnection() {
     // Intents are frozen at IDENTIFY, so a session resumed across an intent change would
     // silently keep subscribing to the old events.
-    if (this.sessionId !== null && this.sequence !== null && this.sessionIntents === INTENTS) {
+    if (shouldResume({ sessionId: this.sessionId, sequence: this.sequence, sessionIntents: this.sessionIntents })) {
       this.send({
         op: OP_RESUME,
         d: {
@@ -276,6 +295,8 @@ export class GatewayDO {
         break
       case "MESSAGE_CREATE": {
         const message = data as MentionMessage
+        this.idleSummaryChannels.delete(message.channel_id)
+        this.activeDuringPoll.add(message.channel_id)
         if (!message.author.bot && !message.webhook_id) {
           this.remember(message)
         }
@@ -342,6 +363,7 @@ export class GatewayDO {
   private async handleInterfere(message: MentionMessage) {
     if (!message.guild_id || message.author.bot || message.webhook_id) return
     if (isMentionTrigger(message, this.env.DISCORD_APPLICATION_ID)) return
+    if (!hasWords(message.content) || !shouldInterfere()) return
     try {
       const settings = await getGuildSettings(this.env.DB, message.guild_id)
       if (!settings?.interfereEnabled) return
@@ -357,7 +379,7 @@ export class GatewayDO {
         INTERFERE_COOLDOWN_MS,
         INTERFERE_DAILY_LIMIT,
       )
-      if (!budget.allowed || !shouldInterfere()) return
+      if (!budget.allowed) return
       const posted = await replyToInterfere(
         {
           rest: this.rest,
@@ -422,10 +444,27 @@ export class GatewayDO {
     const last = await this.state.storage.get<number>(key)
     const now = Date.now()
     if (typeof last === "number" && now - last < COUNTER_DEBOUNCE_MS) {
+      this.pendingCounters.set(channelId, name)
       return
     }
+    this.pendingCounters.delete(channelId)
     await this.state.storage.put(key, now)
-    await this.rest.patch(Routes.channel(channelId), { body: { name: name.slice(0, 100) } })
+    try {
+      await this.rest.patch(Routes.channel(channelId), { body: { name: name.slice(0, 100) } })
+    } catch (error) {
+      if (!this.pendingCounters.has(channelId)) this.pendingCounters.set(channelId, name)
+      throw error
+    }
+  }
+
+  private async flushPendingCounters() {
+    for (const [channelId, name] of this.pendingCounters) {
+      try {
+        await this.updateCounter(channelId, name)
+      } catch (error) {
+        console.error(`Failed to update the counter in channel ${channelId}`, error)
+      }
+    }
   }
 
   private send(payload: unknown) {

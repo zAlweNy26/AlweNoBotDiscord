@@ -1,5 +1,14 @@
-import { describe, expect, it } from "vitest"
-import { checkBudget, reconnectDelay, shouldInterfere, toHttpUrl } from "../src/gateway/GatewayDO"
+import { env, runInDurableObject } from "cloudflare:test"
+import { Routes } from "discord.js"
+import { describe, expect, it, vi } from "vitest"
+import {
+  checkBudget,
+  INTENTS,
+  reconnectDelay,
+  shouldInterfere,
+  shouldResume,
+  toHttpUrl,
+} from "../src/gateway/GatewayDO"
 
 describe("toHttpUrl", () => {
   it("converts wss URLs to https", () => {
@@ -80,5 +89,77 @@ describe("shouldInterfere", () => {
   it("chimes in when the roll lands below the chance", () => {
     expect(shouldInterfere(() => 0)).toBe(true)
     expect(shouldInterfere(() => 0.24)).toBe(true)
+  })
+})
+
+describe("INTENTS", () => {
+  it("asks for message content so gateway messages carry their text", () => {
+    expect(INTENTS & (1 << 15)).toBe(1 << 15)
+  })
+})
+
+describe("shouldResume", () => {
+  it("resumes a stored session identified with the current intents", () => {
+    expect(shouldResume({ sessionId: "s", sequence: 1, sessionIntents: INTENTS })).toBe(true)
+  })
+
+  it("identifies again without a session or a sequence", () => {
+    expect(shouldResume({ sessionId: null, sequence: 1, sessionIntents: INTENTS })).toBe(false)
+    expect(shouldResume({ sessionId: "s", sequence: null, sessionIntents: INTENTS })).toBe(false)
+  })
+
+  it("identifies again when the intents changed", () => {
+    expect(shouldResume({ sessionId: "s", sequence: 1, sessionIntents: 1 })).toBe(false)
+    expect(shouldResume({ sessionId: "s", sequence: 1, sessionIntents: null })).toBe(false)
+  })
+})
+
+interface GatewayInternals {
+  socket: unknown
+  sequence: number | null
+  rest: unknown
+  alarm(): Promise<void>
+  updateCounter(channelId: string, name: string): Promise<void>
+}
+
+async function withOpenGateway(
+  name: string,
+  run: (gateway: GatewayInternals, state: DurableObjectState) => Promise<void>,
+) {
+  const namespace = (env as unknown as Env).GATEWAY
+  await runInDurableObject(namespace.get(namespace.idFromName(name)), async (instance, state) => {
+    const gateway = instance as unknown as GatewayInternals
+    gateway.socket = { readyState: WebSocket.OPEN, send: vi.fn() }
+    try {
+      await run(gateway, state)
+    } finally {
+      await state.storage.deleteAlarm()
+    }
+  })
+}
+
+describe("GatewayDO heartbeat", () => {
+  it("stores the latest sequence so a restart resumes from it", async () => {
+    await withOpenGateway("sequence", async (gateway, state) => {
+      gateway.sequence = 42
+      await gateway.alarm()
+      expect(await state.storage.get("sequence")).toBe(42)
+    })
+  })
+
+  it("applies a counter update that landed inside the debounce window", async () => {
+    await withOpenGateway("counter", async (gateway, state) => {
+      const patch = vi.fn(async () => ({}))
+      gateway.rest = { patch }
+      await gateway.updateCounter("channel", "Members: 1")
+      await gateway.updateCounter("channel", "Members: 3")
+      expect(patch).toHaveBeenCalledTimes(1)
+
+      await state.storage.put("counter:channel", Date.now() - 11 * 60 * 1_000)
+      await gateway.alarm()
+
+      expect(patch).toHaveBeenCalledTimes(2)
+      expect(patch).toHaveBeenLastCalledWith(Routes.channel("channel"), { body: { name: "Members: 3" } })
+    })
   })
 })

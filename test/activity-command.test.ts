@@ -3,6 +3,7 @@ import {
   type APIEmbed,
   ApplicationCommandOptionType,
   InteractionResponseType,
+  PermissionFlagsBits,
   type REST,
 } from "discord.js"
 import { describe, expect, it, vi } from "vitest"
@@ -68,6 +69,20 @@ function createInteraction(options: unknown[] = []) {
   } as unknown as APIChatInputApplicationCommandInteraction
 }
 
+function withResolvedChannel(
+  interaction: APIChatInputApplicationCommandInteraction,
+  channelId: string,
+  permissions: bigint,
+) {
+  return {
+    ...interaction,
+    data: {
+      ...interaction.data,
+      resolved: { channels: { [channelId]: { id: channelId, permissions: String(permissions) } } },
+    },
+  } as unknown as APIChatInputApplicationCommandInteraction
+}
+
 function createEnv(send = vi.fn(async () => {})) {
   return { env: { alwenobot_summary: { send } } as unknown as Env, send }
 }
@@ -120,10 +135,16 @@ describe("activityCommand", () => {
       t,
       locale: "en",
       rest: {} as unknown as REST,
-      interaction: {
-        ...createInteraction([{ name: "channel", type: ApplicationCommandOptionType.Channel, value: "altro-canale" }]),
-        app_permissions: "0",
-      },
+      interaction: withResolvedChannel(
+        {
+          ...createInteraction([
+            { name: "channel", type: ApplicationCommandOptionType.Channel, value: "altro-canale" },
+          ]),
+          app_permissions: "0",
+        },
+        "altro-canale",
+        PermissionFlagsBits.ViewChannel | PermissionFlagsBits.ReadMessageHistory,
+      ),
       waitUntil: vi.fn(),
     })
 
@@ -133,6 +154,26 @@ describe("activityCommand", () => {
       token: "token",
       locale: "en",
     })
+  })
+
+  it("refuses a channel the invoker cannot read", async () => {
+    const { env, send } = createEnv()
+
+    const response = await activityCommand.execute({
+      env,
+      t,
+      locale: "en",
+      rest: {} as unknown as REST,
+      interaction: withResolvedChannel(
+        createInteraction([{ name: "channel", type: ApplicationCommandOptionType.Channel, value: "privato" }]),
+        "privato",
+        PermissionFlagsBits.ViewChannel,
+      ),
+      waitUntil: vi.fn(),
+    })
+
+    expect(response).toEqual(ephemeralError("You can't read the history of <#privato>."))
+    expect(send).not.toHaveBeenCalled()
   })
 
   it("reports an error when the job cannot be queued", async () => {

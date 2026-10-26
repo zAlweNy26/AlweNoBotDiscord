@@ -85,6 +85,7 @@ export const en = {
       channel: "Channel",
       entry: "{{rank}} <@{{authorId}}> — **{{messages}}** messages · {{share}}% · {{average}} characters/msg",
       footer: "Last {{days}} days · text only, bots excluded",
+      noAccess: "You can't read the history of <#{{channelId}}>.",
       noMessages: "No messages in <#{{channelId}}> over the last {{days}} days.",
       participants: "Participants",
       queueError: "I can't start the analysis. Please try again later.",

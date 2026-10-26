@@ -136,7 +136,13 @@ export const activityCommand: Command = {
       return ephemeralError(t(($) => $.common.guildOnly))
     }
     const requested = getChannelOption(interaction, "channel")
-    if (!requested) {
+    if (requested) {
+      const invokerPermissions = interaction.data.resolved?.channels?.[requested]?.permissions
+      const required = PermissionFlagsBits.ViewChannel | PermissionFlagsBits.ReadMessageHistory
+      if (invokerPermissions === undefined || (BigInt(invokerPermissions) & required) !== required) {
+        return ephemeralError(t(($) => $.commands.activity.noAccess, { channelId: requested }))
+      }
+    } else {
       const permissionError = permissionErrorMessage(t, locale, interaction, PermissionFlagsBits.ReadMessageHistory)
       if (permissionError) {
         return ephemeralError(permissionError)

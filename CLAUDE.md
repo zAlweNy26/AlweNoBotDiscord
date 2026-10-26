@@ -19,7 +19,7 @@ A Discord bot with no always-on process. Two entry paths:
 
 Supporting pieces: D1 + Drizzle for guild settings, Cloudflare Queues for `/summary manual` so
 long channel scans never hit the interaction timeout, Workers AI for the summaries themselves,
-and a cron trigger firing every minute to keep the DO alive and poll summary windows.
+and a cron trigger firing every five minutes to keep the DO alive and poll summary windows.
 
 ```
 src/
