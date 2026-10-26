@@ -54,7 +54,7 @@ KLIPY_API_KEY=
 4. `bunx wrangler queues create alwenobot-summary` (one-time; the queue consumer requires it)
 5. `bun run deploy` — deploys the Worker and registers the global slash commands
 6. In the Discord Developer Portal:
-   - set the Interactions Endpoint URL to `https://<worker>.<subdomain>.workers.dev/interactions`
+   - set the Interactions Endpoint URL to `https://discord.danyalwe.me/interactions` (the custom domain in `wrangler.jsonc`; `workers_dev` is off)
    - enable the **Server Members Intent** (required for welcome/farewell/counter)
    - enable the **Message Content Intent** (required for `/summary` and `/interfere`)
 
