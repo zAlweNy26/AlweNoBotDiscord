@@ -3,6 +3,7 @@ import {
   type APIEmbed,
   DiscordAPIError,
   InteractionResponseType,
+  MessageFlags,
   type REST,
 } from "discord.js"
 import { afterEach, describe, expect, it, vi } from "vitest"
@@ -49,6 +50,18 @@ describe("runDeferred", () => {
     const response = runDeferred(context, async () => ({ content: "done" }))
 
     expect(response.type).toBe(InteractionResponseType.DeferredChannelMessageWithSource)
+    expect(response).not.toHaveProperty("data")
+  })
+
+  it("acks privately when asked to", () => {
+    const { context } = createContext()
+
+    const response = runDeferred(context, async () => ({ content: "done" }), true)
+
+    expect(response).toEqual({
+      type: InteractionResponseType.DeferredChannelMessageWithSource,
+      data: { flags: MessageFlags.Ephemeral },
+    })
   })
 
   it("patches the reply with the mapped message when the work fails with a Discord error", async () => {

@@ -215,6 +215,7 @@ export const it = {
       removed: "🗑️ Associazioni rimosse per il messaggio **{{messageId}}**.",
       roleAdded: "✅ Ruolo <@&{{roleId}}> aggiunto.",
       roleRemoved: "✅ Ruolo <@&{{roleId}}> rimosso.",
+      roleTooStrong: "Non puoi creare un pulsante per <@&{{roleId}}>: concede permessi che non hai.",
       unknownButton: "Pulsante non riconosciuto.",
     },
     server: {

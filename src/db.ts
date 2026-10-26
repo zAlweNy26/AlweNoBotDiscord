@@ -161,6 +161,8 @@ export async function getRoleButton(db: D1Database, messageId: string, roleId: s
   )
 }
 
-export async function deleteRoleButtonsForMessage(db: D1Database, messageId: string) {
-  await orm(db).delete(roleButtons).where(eq(roleButtons.messageId, messageId))
+export async function deleteRoleButtonsForMessage(db: D1Database, guildId: string, messageId: string) {
+  await orm(db)
+    .delete(roleButtons)
+    .where(and(eq(roleButtons.guildId, guildId), eq(roleButtons.messageId, messageId)))
 }

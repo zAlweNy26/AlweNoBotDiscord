@@ -32,7 +32,13 @@ describe("fetchJson", () => {
 
   it("throws on a non-ok response", async () => {
     stubFetch(async () => new Response(null, { status: 500 }))
-    await expect(fetchJson("https://example.com/data")).rejects.toThrow("HTTP 500 for https://example.com/data")
+    await expect(fetchJson("https://example.com/data")).rejects.toThrow("HTTP 500 for example.com")
+  })
+
+  it("keeps keys in the URL out of the error message", async () => {
+    stubFetch(async () => new Response(null, { status: 500 }))
+    const failure = await fetchJson("https://api.example.com/secret-path?key=secret-key").catch((error: Error) => error)
+    expect(String(failure)).not.toContain("secret")
   })
 
   it("aborts when the timeout elapses", async () => {

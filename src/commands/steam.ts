@@ -5,7 +5,7 @@ import { getCountryName } from "../lib/countries"
 import { formatUnixTimestamp } from "../lib/format"
 import { fetchJson } from "../lib/http"
 import { parseSteamInput } from "../lib/steam"
-import { ERROR_COLOR } from "../respond"
+import { ERROR_COLOR, ephemeralError } from "../respond"
 import { runDeferred } from "./deferred"
 import { getStringOption } from "./options"
 import type { Command } from "./types"
@@ -75,28 +75,11 @@ export const steamCommand: Command = {
     const raw = getStringOption(interaction, "query")
     const parsed = raw ? parseSteamInput(raw) : null
     if (!parsed) {
-      return {
-        type: 4,
-        data: {
-          flags: 64,
-          embeds: [
-            {
-              color: ERROR_COLOR,
-              description: t(($) => $.commands.steam.invalidInput),
-            },
-          ],
-        },
-      }
+      return ephemeralError(t(($) => $.commands.steam.invalidInput))
     }
     const key = env.STEAM_API_KEY
     if (!key) {
-      return {
-        type: 4,
-        data: {
-          flags: 64,
-          embeds: [{ color: ERROR_COLOR, description: t(($) => $.commands.steam.keyMissing) }],
-        },
-      }
+      return ephemeralError(t(($) => $.commands.steam.keyMissing))
     }
 
     return runDeferred(context, async () => {

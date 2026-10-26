@@ -16,8 +16,7 @@ interface CoinGeckoMarket {
   low_24h: number
 }
 
-function formatEuro(value: number | null, locale: string) {
-  if (value === null) return "N/A"
+function formatEuro(value: number, locale: string) {
   return new Intl.NumberFormat(locale, { style: "currency", currency: "EUR" }).format(value)
 }
 
@@ -67,7 +66,8 @@ export const cryptoCommand: Command = {
               { name: t(($) => $.commands.crypto.price), value: formatEuro(coin.current_price, locale), inline: true },
               {
                 name: t(($) => $.commands.crypto.change24h),
-                value: formatEuro(coin.price_change_percentage_24h, locale),
+                value:
+                  coin.price_change_percentage_24h === null ? "N/A" : `${coin.price_change_percentage_24h.toFixed(2)}%`,
                 inline: true,
               },
               { name: t(($) => $.commands.crypto.high24h), value: formatEuro(coin.high_24h, locale), inline: true },

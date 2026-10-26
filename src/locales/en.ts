@@ -209,6 +209,7 @@ export const en = {
       removed: "🗑️ Associations removed for message **{{messageId}}**.",
       roleAdded: "✅ Role <@&{{roleId}}> added.",
       roleRemoved: "✅ Role <@&{{roleId}}> removed.",
+      roleTooStrong: "You can't create a button for <@&{{roleId}}>: it grants permissions you don't have.",
       unknownButton: "Unknown button.",
     },
     server: {

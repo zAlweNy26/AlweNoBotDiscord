@@ -26,8 +26,9 @@ export function ephemeralError(description: string) {
   return ephemeralEmbed({ color: ERROR_COLOR, description })
 }
 
-export function deferredResponse() {
+export function deferredResponse(ephemeral = false) {
   return {
     type: InteractionResponseType.DeferredChannelMessageWithSource,
+    ...(ephemeral ? { data: { flags: MessageFlags.Ephemeral } } : {}),
   } satisfies APIInteractionResponse
 }

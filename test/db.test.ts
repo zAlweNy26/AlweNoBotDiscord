@@ -105,8 +105,14 @@ describe("role buttons", () => {
       label: "Annunci",
       emoji: null,
     })
-    await deleteRoleButtonsForMessage(env.DB, MESSAGE_ID)
+    await deleteRoleButtonsForMessage(env.DB, GUILD_ID, MESSAGE_ID)
     expect(await getRoleButton(env.DB, MESSAGE_ID, ROLE_ID)).toBeNull()
     expect(await getRoleButton(env.DB, MESSAGE_ID, "666666666666666666")).toBeNull()
+  })
+
+  it("leaves the buttons of another server alone", async () => {
+    await addRoleButton(env.DB, { messageId: MESSAGE_ID, roleId: ROLE_ID, guildId: GUILD_ID, label: "A", emoji: null })
+    await deleteRoleButtonsForMessage(env.DB, "999999999999999999", MESSAGE_ID)
+    expect(await getRoleButton(env.DB, MESSAGE_ID, ROLE_ID)).not.toBeNull()
   })
 })

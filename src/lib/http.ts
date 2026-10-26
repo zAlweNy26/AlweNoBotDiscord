@@ -5,7 +5,7 @@ export async function fetchJson<T>(url: string, init?: RequestInit, timeoutMs = 
   const signal = init?.signal ? AbortSignal.any([init.signal, timeout]) : timeout
   const response = await fetch(url, { ...init, signal })
   if (!response.ok) {
-    throw new Error(`HTTP ${response.status} for ${url}`)
+    throw new Error(`HTTP ${response.status} for ${new URL(url).host}`)
   }
   return (await response.json()) as T
 }

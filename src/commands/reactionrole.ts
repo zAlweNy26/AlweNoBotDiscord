@@ -15,6 +15,7 @@ import type { TFunction } from "i18next"
 import { addRoleButton, deleteRoleButtonsForMessage, getRoleButton } from "../db"
 import { permissionErrorMessage } from "../lib/discord-errors"
 import { ERROR_COLOR, ephemeralEmbed, ephemeralError, SUCCESS_COLOR } from "../respond"
+import { runDeferred } from "./deferred"
 import { getSubOption } from "./options"
 import type { Command } from "./types"
 
@@ -22,6 +23,14 @@ const CUSTOM_ID_PREFIX = "role:"
 
 function messageIdFromInput(input: string) {
   return /(\d{17,20})/.exec(input.trim())?.[1] ?? null
+}
+
+// The bot assigns the role, so Discord's own hierarchy check never sees the moderator.
+export function canGrant(rolePermissions: string | undefined, invokerPermissions: string | undefined) {
+  if (rolePermissions === undefined || invokerPermissions === undefined) return false
+  const invoker = BigInt(invokerPermissions)
+  if ((invoker & PermissionFlagsBits.Administrator) === PermissionFlagsBits.Administrator) return true
+  return (BigInt(rolePermissions) & ~invoker) === 0n
 }
 
 export async function handleRoleButton(
@@ -123,37 +132,46 @@ export const reactionroleCommand: Command = {
       if (typeof channelId !== "string" || typeof roleId !== "string") {
         return ephemeralError(t(($) => $.commands.reactionrole.missingArgs))
       }
+      const role = interaction.data.resolved?.roles?.[roleId]
+      if (!canGrant(role?.permissions, interaction.member?.permissions)) {
+        return ephemeralError(t(($) => $.commands.reactionrole.roleTooStrong, { roleId }))
+      }
       const rawLabel = getSubOption(subcommand, "label", ApplicationCommandOptionType.String)
       const label =
         (typeof rawLabel === "string" ? rawLabel : undefined) ??
-        interaction.data.resolved?.roles?.[roleId]?.name ??
+        role?.name ??
         t(($) => $.commands.reactionrole.defaultLabel)
-      await addRoleButton(env.DB, {
-        messageId: (
-          (await context.rest.post(Routes.channelMessages(channelId), {
-            body: {
-              components: [
-                new ActionRowBuilder<ButtonBuilder>()
-                  .addComponents(
-                    new ButtonBuilder()
-                      .setCustomId(`${CUSTOM_ID_PREFIX}${roleId}`)
-                      .setLabel(label)
-                      .setStyle(ButtonStyle.Primary),
-                  )
-                  .toJSON(),
-              ],
-            },
-          })) as APIMessage
-        ).id,
-        roleId,
-        guildId,
-        label,
-        emoji: null,
-      })
-      return ephemeralEmbed({
-        color: SUCCESS_COLOR,
-        description: t(($) => $.commands.reactionrole.created, { channelId }),
-      })
+      return runDeferred(
+        context,
+        async () => {
+          await addRoleButton(env.DB, {
+            messageId: (
+              (await context.rest.post(Routes.channelMessages(channelId), {
+                body: {
+                  components: [
+                    new ActionRowBuilder<ButtonBuilder>()
+                      .addComponents(
+                        new ButtonBuilder()
+                          .setCustomId(`${CUSTOM_ID_PREFIX}${roleId}`)
+                          .setLabel(label)
+                          .setStyle(ButtonStyle.Primary),
+                      )
+                      .toJSON(),
+                  ],
+                },
+              })) as APIMessage
+            ).id,
+            roleId,
+            guildId,
+            label,
+            emoji: null,
+          })
+          return {
+            embeds: [{ color: SUCCESS_COLOR, description: t(($) => $.commands.reactionrole.created, { channelId }) }],
+          }
+        },
+        true,
+      )
     }
     if (subcommand.name === "delete") {
       const rawMessage = getSubOption(subcommand, "message", ApplicationCommandOptionType.String)
@@ -161,7 +179,7 @@ export const reactionroleCommand: Command = {
       if (!messageId) {
         return ephemeralError(t(($) => $.commands.reactionrole.invalidMessage))
       }
-      await deleteRoleButtonsForMessage(env.DB, messageId)
+      await deleteRoleButtonsForMessage(env.DB, guildId, messageId)
       return ephemeralEmbed({
         color: SUCCESS_COLOR,
         description: t(($) => $.commands.reactionrole.removed, { messageId }),

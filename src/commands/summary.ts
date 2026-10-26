@@ -9,8 +9,9 @@ import {
 } from "discord.js"
 import { addSummaryChannel, getSummaryChannel, listSummaryChannelsForGuild, removeSummaryChannel } from "../db"
 import { permissionErrorMessage } from "../lib/discord-errors"
-import { deferredResponse, ephemeralEmbed, ephemeralError, SUCCESS_COLOR } from "../respond"
+import { deferredResponse, ERROR_COLOR, ephemeralEmbed, ephemeralError, SUCCESS_COLOR } from "../respond"
 import { getSummaryStatus } from "../summary"
+import { runDeferred } from "./deferred"
 import { getSubcommand, getSubOption } from "./options"
 import type { Command } from "./types"
 
@@ -110,24 +111,31 @@ export const summaryCommand: Command = {
         const threshold =
           typeof requested === "number" ? clamp(requested, MIN_THRESHOLD, MAX_THRESHOLD) : DEFAULT_THRESHOLD
 
-        let baseline = "0"
-        try {
-          baseline =
-            (
-              (await rest.get(Routes.channelMessages(channelId), {
-                query: new URLSearchParams({ limit: "1" }),
-              })) as APIMessage[]
-            )[0]?.id ?? "0"
-        } catch (error) {
-          console.error(`Failed to read baseline for channel ${channelId}`, error)
-          return ephemeralError(t(($) => $.commands.summary.readError))
-        }
+        return runDeferred(
+          context,
+          async () => {
+            let baseline = "0"
+            try {
+              baseline =
+                (
+                  (await rest.get(Routes.channelMessages(channelId), {
+                    query: new URLSearchParams({ limit: "1" }),
+                  })) as APIMessage[]
+                )[0]?.id ?? "0"
+            } catch (error) {
+              console.error(`Failed to read baseline for channel ${channelId}`, error)
+              return { embeds: [{ color: ERROR_COLOR, description: t(($) => $.commands.summary.readError) }] }
+            }
 
-        await addSummaryChannel(env.DB, guildId, channelId, threshold, baseline)
-        return ephemeralEmbed({
-          color: SUCCESS_COLOR,
-          description: t(($) => $.commands.summary.enabled, { channelId, threshold }),
-        })
+            await addSummaryChannel(env.DB, guildId, channelId, threshold, baseline)
+            return {
+              embeds: [
+                { color: SUCCESS_COLOR, description: t(($) => $.commands.summary.enabled, { channelId, threshold }) },
+              ],
+            }
+          },
+          true,
+        )
       }
       case "remove": {
         const channelId = getChannelId(subcommand)
@@ -170,37 +178,45 @@ export const summaryCommand: Command = {
             description: t(($) => $.commands.summary.nothing),
           })
         }
-        return ephemeralEmbed({
-          color: SUCCESS_COLOR,
-          title: t(($) => $.commands.summary.statusTitle),
-          description: (
-            await Promise.all(
-              rows.map(async (row) => {
-                try {
-                  const status = await getSummaryStatus(rest, row)
-                  const progress = t(($) => $.commands.summary.progress, {
-                    counted: status.counted,
-                    threshold: row.threshold,
-                  })
-                  if (status.ready) {
-                    return t(($) => $.commands.summary.statusReady, {
-                      channelId: row.channelId,
-                      progress,
-                    })
-                  }
-                  return t(($) => $.commands.summary.statusToGo, {
-                    channelId: row.channelId,
-                    progress,
-                    count: row.threshold - status.counted,
-                  })
-                } catch (error) {
-                  console.error(`Failed to read status for channel ${row.channelId}`, error)
-                  return t(($) => $.commands.summary.noAccess, { channelId: row.channelId })
-                }
-              }),
-            )
-          ).join("\n"),
-        })
+        return runDeferred(
+          context,
+          async () => ({
+            embeds: [
+              {
+                color: SUCCESS_COLOR,
+                title: t(($) => $.commands.summary.statusTitle),
+                description: (
+                  await Promise.all(
+                    rows.map(async (row) => {
+                      try {
+                        const status = await getSummaryStatus(rest, row)
+                        const progress = t(($) => $.commands.summary.progress, {
+                          counted: status.counted,
+                          threshold: row.threshold,
+                        })
+                        if (status.ready) {
+                          return t(($) => $.commands.summary.statusReady, {
+                            channelId: row.channelId,
+                            progress,
+                          })
+                        }
+                        return t(($) => $.commands.summary.statusToGo, {
+                          channelId: row.channelId,
+                          progress,
+                          count: row.threshold - status.counted,
+                        })
+                      } catch (error) {
+                        console.error(`Failed to read status for channel ${row.channelId}`, error)
+                        return t(($) => $.commands.summary.noAccess, { channelId: row.channelId })
+                      }
+                    }),
+                  )
+                ).join("\n"),
+              },
+            ],
+          }),
+          true,
+        )
       }
       case "manual": {
         const channelId = interaction.channel_id

@@ -1,6 +1,6 @@
 import { type APIInteraction, DiscordAPIError, InteractionResponseType, InteractionType, type REST } from "discord.js"
 import { describe, expect, it } from "vitest"
-import { ephemeralError } from "../src/respond"
+import { ERROR_COLOR, ephemeralError } from "../src/respond"
 import { routeInteraction } from "../src/router"
 
 const context = {
@@ -41,7 +41,7 @@ describe("routeInteraction", () => {
       rest: { get: async () => [] } as unknown as REST,
     })
     expect(response).not.toEqual(ephemeralError("This command is reserved for the bot owner."))
-    expect(response.type).toBe(InteractionResponseType.ChannelMessageWithSource)
+    expect(response.type).toBe(InteractionResponseType.DeferredChannelMessageWithSource)
   })
 
   it("rejects a non-owner running an owner-only command from a guild", async () => {
@@ -54,11 +54,14 @@ describe("routeInteraction", () => {
     expect(response).toEqual(ephemeralError("This command is reserved for the bot owner."))
   })
 
-  it("maps Discord permission failures to a readable message", async () => {
+  it("maps Discord permission failures of a deferred command to a readable message", async () => {
+    const pending: Promise<unknown>[] = []
+    const patched: unknown[] = []
     const interaction = {
       type: InteractionType.ApplicationCommand,
       data: { name: "server" },
       guild_id: "g",
+      token: "token",
       user: { id: "123" },
     } as unknown as APIInteraction
     const response = await routeInteraction(interaction, {
@@ -74,8 +77,18 @@ describe("routeInteraction", () => {
             { body: undefined, files: undefined },
           )
         },
+        patch: async (_route: string, options: { body: unknown }) => {
+          patched.push(options.body)
+        },
       } as unknown as REST,
+      waitUntil: (promise) => {
+        pending.push(promise)
+      },
     })
-    expect(response).toEqual(ephemeralError("I don't have the permissions to do that."))
+    await Promise.all(pending)
+    expect(response.type).toBe(InteractionResponseType.DeferredChannelMessageWithSource)
+    expect(patched).toEqual([
+      { embeds: [{ color: ERROR_COLOR, description: "I don't have the permissions to do that." }] },
+    ])
   })
 })

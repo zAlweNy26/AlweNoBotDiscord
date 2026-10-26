@@ -8,7 +8,7 @@ export interface DeferredBody {
   embeds?: APIEmbed[]
 }
 
-export function runDeferred(context: CommandContext, work: () => Promise<DeferredBody>) {
+export function runDeferred(context: CommandContext, work: () => Promise<DeferredBody>, ephemeral = false) {
   context.waitUntil(
     (async () => {
       let body: DeferredBody
@@ -38,5 +38,5 @@ export function runDeferred(context: CommandContext, work: () => Promise<Deferre
     })(),
   )
 
-  return deferredResponse()
+  return deferredResponse(ephemeral)
 }

@@ -14,7 +14,6 @@ function buildConfigCommand(spec: {
   name: "welcome" | "farewell" | "counter"
   description: string
   label: string
-  title: string
   enabledField: "welcomeEnabled" | "farewellEnabled" | "counterEnabled"
   channelField: "welcomeChannelId" | "farewellChannelId" | "counterChannelId"
   textField: "welcomeMessage" | "farewellMessage" | "counterFormat"
@@ -135,7 +134,6 @@ export const welcomeCommand = buildConfigCommand({
   name: "welcome",
   description: "Configure the welcome message",
   label: "the welcome message",
-  title: "Welcome message",
   enabledField: "welcomeEnabled",
   channelField: "welcomeChannelId",
   textField: "welcomeMessage",
@@ -148,7 +146,6 @@ export const farewellCommand = buildConfigCommand({
   name: "farewell",
   description: "Configure the farewell message",
   label: "the farewell message",
-  title: "Farewell message",
   enabledField: "farewellEnabled",
   channelField: "farewellChannelId",
   textField: "farewellMessage",
@@ -161,7 +158,6 @@ export const counterCommand = buildConfigCommand({
   name: "counter",
   description: "Configure the member counter",
   label: "the member counter",
-  title: "Member counter",
   enabledField: "counterEnabled",
   channelField: "counterChannelId",
   textField: "counterFormat",

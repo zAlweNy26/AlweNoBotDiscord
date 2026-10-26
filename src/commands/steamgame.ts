@@ -1,7 +1,7 @@
 import { type APIEmbedField, SlashCommandBuilder } from "discord.js"
 import type { TFunction } from "i18next"
 import { fetchJson } from "../lib/http"
-import { ERROR_COLOR, SUCCESS_COLOR } from "../respond"
+import { ERROR_COLOR, ephemeralError, SUCCESS_COLOR } from "../respond"
 import { runDeferred } from "./deferred"
 import { getStringOption } from "./options"
 import type { Command } from "./types"
@@ -80,10 +80,7 @@ export const steamgameCommand: Command = {
     const { t, locale } = context
     const query = getStringOption(context.interaction, "query")?.trim()
     if (!query) {
-      return {
-        type: 4,
-        data: { ...error(t(($) => $.commands.steamgame.missingQuery)), flags: 64 },
-      }
+      return ephemeralError(t(($) => $.commands.steamgame.missingQuery))
     }
 
     return runDeferred(context, async () => {
